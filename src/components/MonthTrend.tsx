@@ -1,5 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { formatCurrency, formatMonthKey } from '@/lib/format'
+import { formatNumber, formatMonthKey } from '@/lib/format'
 import { COLORS } from '@/lib/constants'
 
 type DataPoint = {
@@ -42,10 +42,10 @@ export default function MonthTrend({ data, title = 'Evolução Mensal' }: Props)
         <div className="h-[300px] flex flex-col items-center justify-center">
           <div className="text-center">
             <div className="text-5xl font-bold text-primary mb-2">
-              {formatCurrency(chartData[0].valor)}
+              {formatNumber(chartData[0].valor)}
             </div>
             <div className="text-lg text-gray-400 mb-1">{chartData[0].mes}</div>
-            <div className="text-sm text-gray-500">Total de vendas no mês</div>
+            <div className="text-sm text-gray-500">Total no período</div>
           </div>
           <div className="mt-8 text-xs text-gray-500 text-center max-w-md">
             💡 Mais dados serão exibidos automaticamente conforme novos meses forem adicionados
@@ -63,7 +63,7 @@ export default function MonthTrend({ data, title = 'Evolução Mensal' }: Props)
             <YAxis
               tick={{ fill: '#9ca3af', fontSize: 12 }}
               stroke="#2a2a2a"
-              tickFormatter={(value) => `${(value / 1000).toFixed(0)}k€`}
+              tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value.toString()}
             />
             <Tooltip
               contentStyle={{
@@ -72,7 +72,7 @@ export default function MonthTrend({ data, title = 'Evolução Mensal' }: Props)
                 borderRadius: '8px',
                 color: '#e5e5e5',
               }}
-              formatter={(value: number) => formatCurrency(value)}
+              formatter={(value: number) => formatNumber(value)}
               labelStyle={{ color: '#9ca3af' }}
             />
             <Legend

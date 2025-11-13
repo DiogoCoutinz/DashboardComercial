@@ -1,10 +1,11 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
-import Vendedores from './pages/Vendedores'
-import Clientes from './pages/Clientes'
-import Familias from './pages/Familias'
-import DetalheEntidade from './pages/DetalheEntidade'
+import Comerciais from './pages/Comerciais'
+import Canais from './pages/Canais'
+import Funil from './pages/Funil'
+import PPF from './pages/PPF'
+import MF from './pages/MF'
 
 function App() {
   return (
@@ -12,10 +13,11 @@ function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/vendedores" element={<Vendedores />} />
-          <Route path="/clientes" element={<Clientes />} />
-          <Route path="/familias" element={<Familias />} />
-          <Route path="/detalhe" element={<DetalheEntidade />} />
+          <Route path="/comerciais" element={<Comerciais />} />
+          <Route path="/canais" element={<Canais />} />
+          <Route path="/funil" element={<Funil />} />
+          <Route path="/ppf" element={<PPF />} />
+          <Route path="/mf" element={<MF />} />
         </Routes>
       </Layout>
     </Router>

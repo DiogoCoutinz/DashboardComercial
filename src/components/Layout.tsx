@@ -1,8 +1,7 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { BarChart3, Users, UserCircle, Package, RefreshCw } from 'lucide-react'
+import { BarChart3, Users, UserCircle, Package, RefreshCw, DollarSign } from 'lucide-react'
 import ShareButton from './ShareButton'
-import DataUpload from './DataUpload'
 
 type Props = {
   children: ReactNode
@@ -12,10 +11,12 @@ export default function Layout({ children }: Props) {
   const location = useLocation()
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: BarChart3 },
-    { path: '/vendedores', label: 'Vendedores', icon: UserCircle },
-    { path: '/clientes', label: 'Clientes', icon: Users },
-    { path: '/familias', label: 'Famílias', icon: Package },
+    { path: '/', label: 'EOD', icon: BarChart3 },
+    { path: '/ppf', label: 'PPF', icon: Users },
+    { path: '/mf', label: 'MF', icon: DollarSign },
+    { path: '/comerciais', label: 'Comerciais', icon: UserCircle },
+    { path: '/canais', label: 'Canais', icon: Package },
+    { path: '/funil', label: 'Funil EOD', icon: BarChart3 },
   ]
 
   const handleRefresh = () => {
@@ -28,10 +29,9 @@ export default function Layout({ children }: Props) {
       <header className="border-b border-gray-800 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
           <h1 className="text-lg sm:text-xl font-bold flex items-center gap-2">
-            📊 Dashboard Vendas — Salvador
+            📊 BoomLab — Dashboard Comercial
           </h1>
           <div className="flex items-center gap-2">
-            <DataUpload />
             <ShareButton />
             <button
               onClick={handleRefresh}
@@ -84,7 +84,7 @@ export default function Layout({ children }: Props) {
             Última atualização: <span className="font-mono">{new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           <div className="text-gray-500">
-            Dados: Supabase via vendas_resumo & vendas_mensais
+            BoomLab Analytics • Powered by Supabase + React
           </div>
         </div>
       </footer>

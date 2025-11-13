@@ -1,105 +1,251 @@
-# Setup Rápido
+# 🚀 Setup Completo — BoomLab Dashboard
 
-## 1. Instalar
+## 1️⃣ Pré-requisitos
+
+- Node.js 18+ instalado
+- Conta Supabase criada
+- Git (opcional)
+
+---
+
+## 2️⃣ Instalar Dependências
 
 ```bash
 npm install
 ```
 
-## 2. Configurar Supabase
+---
 
-Cria o ficheiro `.env.local` na raiz do projeto:
+## 3️⃣ Configurar Supabase
+
+### 3.1 Criar Projeto no Supabase
+
+1. Vai a [supabase.com](https://supabase.com)
+2. Cria um novo projeto
+3. Guarda o URL e a Anon Key
+
+### 3.2 Criar ficheiro `.env.local`
+
+Na raiz do projeto:
 
 ```env
-VITE_SUPABASE_URL=https://uvvxvqrymdywxoqgnnvd.supabase.co
-VITE_SUPABASE_ANON_KEY=<TUA_KEY_AQUI>
+VITE_SUPABASE_URL=https://xxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
-**Onde encontrar as credenciais:**
-1. Vai ao teu projeto Supabase
-2. Settings → API
-3. Copia `Project URL` e `anon public` key
+### 3.3 Criar Tabela
 
-## 3. Criar as Tabelas no Supabase
-
-No Supabase SQL Editor, executa:
+No **SQL Editor** do Supabase, executa:
 
 ```sql
--- Tabela vendas_resumo
-CREATE TABLE vendas_resumo (
-  id BIGSERIAL PRIMARY KEY,
-  "Vendedor" TEXT,
-  "No_cliente" TEXT,
-  "Cliente" TEXT,
-  "Familia" TEXT,
-  "Tipo" TEXT,
-  "Acum_ac" NUMERIC DEFAULT 0,
-  "Acum_aa" NUMERIC DEFAULT 0,
-  "Per_acum" NUMERIC DEFAULT 0,
-  "Crescimento" NUMERIC DEFAULT 0
-);
-
--- Tabela vendas_mensais
-CREATE TABLE vendas_mensais (
-  id BIGSERIAL PRIMARY KEY,
-  "Vendedor" TEXT,
-  "No_cliente" TEXT,
-  "Cliente" TEXT,
-  "Familia" TEXT,
-  "Tipo" TEXT,
-  "Mes" TEXT,
-  "Valor" NUMERIC DEFAULT 0
-);
+CREATE TABLE comercial_registos_eod (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  ano integer NOT NULL,
+  trimestre text NOT NULL,
+  mes text NOT NULL,
+  semana text NOT NULL,
+  dia date NOT NULL,
+  comercial text NOT NULL,
+  canal_aquisicao text NOT NULL,
+  offer text NULL,
+  
+  -- Cold Calling
+  chamadas_efetuadas integer NULL DEFAULT 0,
+  chamadas_atendidas integer NULL DEFAULT 0,
+  decisores_abordados integer NULL DEFAULT 0,
+  decisores_qualificados integer NULL DEFAULT 0,
+  
+  -- LinkedIn / Email / References
+  mensagens_emails_referencias integer NULL DEFAULT 0,
+  respostas integer NULL DEFAULT 0,
+  respostas_qualificadas integer NULL DEFAULT 0,
+  
+  -- Ads Leads
+  submissoes integer NULL DEFAULT 0,
+  leads_atenderam integer NULL DEFAULT 0,
+  tempo_medio_resposta numeric(10, 2) NULL,
+  
+  -- Meetings & Conversion
+  agendamentos integer NULL DEFAULT 0,
+  leads_agendadas integer NULL DEFAULT 0,
+  leads_compareceram integer NULL DEFAULT 0,
+  dias_marcacao_discovery integer NULL DEFAULT 0,
+  
+  created_at timestamp with time zone NULL DEFAULT now(),
+  updated_at timestamp with time zone NULL DEFAULT now(),
+  
+  CONSTRAINT comercial_registos_eod_pkey PRIMARY KEY (id),
+  CONSTRAINT comercial_registos_eod_unique UNIQUE (dia, comercial, canal_aquisicao, offer)
+) TABLESPACE pg_default;
 
 -- Índices para performance
-CREATE INDEX idx_resumo_vendedor ON vendas_resumo("Vendedor");
-CREATE INDEX idx_resumo_cliente ON vendas_resumo("Cliente");
-CREATE INDEX idx_resumo_familia ON vendas_resumo("Familia");
-CREATE INDEX idx_mensal_mes ON vendas_mensais("Mes");
-CREATE INDEX idx_mensal_vendedor ON vendas_mensais("Vendedor");
+CREATE INDEX idx_comercial_eod_dia 
+  ON comercial_registos_eod USING btree (dia DESC);
+
+CREATE INDEX idx_comercial_eod_comercial 
+  ON comercial_registos_eod USING btree (comercial);
+
+CREATE INDEX idx_comercial_eod_mes 
+  ON comercial_registos_eod USING btree (ano, mes);
+
+CREATE INDEX idx_comercial_eod_offer 
+  ON comercial_registos_eod USING btree (offer) 
+  WHERE (offer IS NOT NULL);
 ```
 
-## 4. Importar Dados
+### 3.4 Configurar RLS (Row Level Security)
 
-### Opção A: UI do Supabase
-1. Vai à tabela no Table Editor
-2. Import CSV
-3. Seleciona `vendas_resumo.csv` e `vendas_mensais.csv`
+```sql
+-- Permitir leitura pública
+ALTER TABLE comercial_registos_eod ENABLE ROW LEVEL SECURITY;
 
-### Opção B: Python Script (se tiveres os CSVs)
-```python
-# Ver tratar_vendas.py como referência
+CREATE POLICY "Permitir leitura pública"
+  ON comercial_registos_eod
+  FOR SELECT
+  TO public
+  USING (true);
+
+-- Escrita apenas via service role (n8n)
+CREATE POLICY "Apenas service role pode inserir"
+  ON comercial_registos_eod
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (true);
 ```
 
-## 5. Executar
+---
+
+## 4️⃣ Executar em Desenvolvimento
 
 ```bash
 npm run dev
 ```
 
-## 6. Deploy Vercel
+Dashboard abre em: **http://localhost:5173**
+
+---
+
+## 5️⃣ Popular com Dados de Teste (Opcional)
+
+Se quiseres testar sem n8n, podes inserir dados manualmente:
+
+```sql
+INSERT INTO comercial_registos_eod 
+(ano, trimestre, mes, semana, dia, comercial, canal_aquisicao, offer,
+ chamadas_efetuadas, chamadas_atendidas, decisores_abordados,
+ agendamentos, leads_agendadas, leads_compareceram)
+VALUES
+(2025, 'Q4', 'novembro', 'nº 46', '2025-11-11', 
+ 'Daniela Gonçalves', 'Anúncios', 'Consultoria Comercial',
+ 10, 8, 5, 3, 3, 2),
+ 
+(2025, 'Q4', 'novembro', 'nº 46', '2025-11-12', 
+ 'Marcelo Lachev', 'Cold Calling', 'Mentoria',
+ 25, 15, 10, 4, 4, 3);
+```
+
+---
+
+## 6️⃣ Configurar n8n (Automação)
+
+### 6.1 Workflow n8n
+
+O n8n deve:
+1. Ler Google Sheets diariamente
+2. Transformar dados
+3. Inserir no Supabase via REST API ou Supabase node
+
+### 6.2 Credenciais Supabase no n8n
+
+- **URL**: https://xxxxx.supabase.co
+- **Service Role Key**: (chave com permissões de escrita)
+
+⚠️ **Nunca uses a Service Role Key no frontend!**
+
+---
+
+## 7️⃣ Deploy para Produção
+
+### Opção A: Vercel (Recomendado)
 
 ```bash
-# Install Vercel CLI
+# Instalar CLI
 npm i -g vercel
 
 # Deploy
 vercel
 
-# Configura as env vars no dashboard Vercel
+# Na dashboard Vercel:
+# Settings → Environment Variables
+# Adiciona VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
 ```
 
-## Troubleshooting
+### Opção B: Build Manual
 
-**Erro de fetch/CORS:**
-- Confirma que as tabelas estão públicas (RLS disabled para leitura) ou configura políticas
-- No Supabase: Authentication → Policies
+```bash
+npm run build
 
-**Sem dados:**
-- Verifica se as tabelas têm dados no Table Editor
-- Abre DevTools Console para ver erros
+# Ficheiros em /dist
+# Serve com qualquer static host (Netlify, Cloudflare Pages, etc)
+```
 
-**CSV Fallback:**
-- Coloca `vendas_resumo.csv` e `vendas_mensais.csv` em `/public`
-- Remove/comenta as env vars do Supabase
+---
 
+## 8️⃣ Verificar Setup
+
+### ✅ Checklist
+
+- [ ] Node_modules instalados
+- [ ] `.env.local` criado com credenciais corretas
+- [ ] Tabela `comercial_registos_eod` criada no Supabase
+- [ ] RLS configurado
+- [ ] Dados de teste inseridos (opcional)
+- [ ] `npm run dev` funciona
+- [ ] Dashboard abre no browser
+- [ ] Filtros funcionam
+- [ ] Gráficos renderizam
+
+---
+
+## 🐛 Troubleshooting
+
+### Erro: "supabase is null"
+- Verifica se `.env.local` está correto
+- Confirma que o ficheiro está na **raiz** do projeto
+- Restart o servidor: `npm run dev`
+
+### Erro: "Failed to fetch"
+- Verifica credenciais Supabase
+- Confirma que a tabela existe
+- Verifica RLS policies (leitura pública habilitada)
+
+### Gráficos não aparecem
+- Confirma que há dados na tabela
+- Verifica console do browser (F12) para erros
+- Testa queries no Supabase SQL Editor
+
+### Filtros não funcionam
+- Confirma que há dados variados (diferentes comerciais, canais, etc)
+- Verifica se `getFilterOptions()` está a retornar dados
+
+---
+
+## 📚 Próximos Passos
+
+1. Configura n8n para inserir dados reais
+2. Ajusta as cores/design se necessário
+3. Deploy para produção
+4. Partilha o link com a equipa!
+
+---
+
+## 💡 Dicas
+
+- **Performance**: Os índices estão otimizados para queries por data e comercial
+- **Manutenção**: n8n insere automaticamente, sem necessidade de updates manuais
+- **Escalabilidade**: Supabase aguenta milhões de registos
+- **Custos**: Plano gratuito Supabase é suficiente para começar
+
+---
+
+🎉 **Setup completo!** Bom trabalho!
