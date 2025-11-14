@@ -6,6 +6,7 @@ import Canais from './pages/Canais'
 import Funil from './pages/Funil'
 import PPF from './pages/PPF'
 import MF from './pages/MF'
+import GrowthKPIs from './pages/GrowthKPIs'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/funil" element={<Funil />} />
           <Route path="/ppf" element={<PPF />} />
           <Route path="/mf" element={<MF />} />
+          <Route path="/growth" element={<GrowthKPIs />} />
         </Routes>
       </Layout>
     </Router>

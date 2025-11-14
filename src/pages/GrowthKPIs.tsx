@@ -2,14 +2,16 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import LoadingState from '@/components/LoadingState'
-import { TrendingUp, Target, Calendar, Award } from 'lucide-react'
+import CircularProgress from '@/components/CircularProgress'
+import { TrendingUp, Target, Calendar, Award, CheckCircle } from 'lucide-react'
 import { COLORS } from '@/lib/constants'
 
 export default function GrowthKPIs() {
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [weeklyData, setWeeklyData] = useState<any[]>([])
-  const [monthlyRecords, setMonthlyRecords] = useState<any>(null)
+  const [objetivosData, setObjetivosData] = useState<any>(null)
+  const [comercialObjetivos, setComercialObjetivos] = useState<any[]>([])
 
   useEffect(() => {
     loadGrowthData()
@@ -18,14 +20,13 @@ export default function GrowthKPIs() {
   const loadGrowthData = async () => {
     setLoading(true)
     
-    // Aqui vamos buscar dados agregados por semana do PPF
     if (!supabase) {
       setLoading(false)
       return
     }
 
     try {
-      // Buscar dados PPF agregados por semana
+      // 1. Buscar dados PPF agregados por semana
       const { data: ppfData } = await supabase
         .from('comercial_registos_ppf')
         .select('*')
@@ -65,6 +66,71 @@ export default function GrowthKPIs() {
         }, {})
 
         setWeeklyData(Object.values(byWeek))
+      }
+
+      // 2. Buscar dados EOD para objetivos (mês atual)
+      const currentMonth = new Date().toLocaleString('pt-PT', { month: 'long' }).toLowerCase()
+      const currentYear = new Date().getFullYear()
+
+      const { data: eodData } = await supabase
+        .from('comercial_registos_eod')
+        .select('*')
+        .eq('ano', currentYear)
+        .eq('mes', currentMonth)
+
+      const { data: ppfMonthData } = await supabase
+        .from('comercial_registos_ppf')
+        .select('*')
+        .eq('ano', currentYear)
+        .eq('mes', currentMonth)
+
+      if (eodData && ppfMonthData) {
+        // Agregar totais do mês
+        const totalChamadas = eodData.reduce((sum, r) => sum + (r.chamadas_efetuadas || 0), 0)
+        const totalAgendamentosColdCalling = eodData
+          .filter(r => r.canal_aquisicao === 'Cold Calling')
+          .reduce((sum, r) => sum + (r.agendamentos || 0), 0)
+        const totalAgendamentosOutros = eodData
+          .filter(r => r.canal_aquisicao !== 'Cold Calling')
+          .reduce((sum, r) => sum + (r.agendamentos || 0), 0)
+        const totalMQLs = ppfMonthData.reduce((sum, r) => sum + (r.mqls || 0), 0)
+
+        setObjetivosData({
+          chamadas: totalChamadas,
+          agendamentosColdCalling: totalAgendamentosColdCalling,
+          agendamentosOutros: totalAgendamentosOutros,
+          mqls: totalMQLs,
+        })
+
+        // Agregar por comercial
+        const byComercial = eodData.reduce((acc: any, r: any) => {
+          const comercial = r.comercial
+          if (!acc[comercial]) {
+            acc[comercial] = {
+              comercial,
+              chamadas: 0,
+              agendamentosColdCalling: 0,
+              agendamentosOutros: 0,
+              mqls: 0,
+            }
+          }
+          acc[comercial].chamadas += r.chamadas_efetuadas || 0
+          if (r.canal_aquisicao === 'Cold Calling') {
+            acc[comercial].agendamentosColdCalling += r.agendamentos || 0
+          } else {
+            acc[comercial].agendamentosOutros += r.agendamentos || 0
+          }
+          return acc
+        }, {})
+
+        // Adicionar MQLs por comercial de origem
+        ppfMonthData.forEach((r: any) => {
+          if (r.comercial_origem && byComercial[r.comercial_origem]) {
+            byComercial[r.comercial_origem].mqls += r.mqls_comercial || 0
+          }
+        })
+
+        setComercialObjetivos(Object.values(byComercial))
       }
     } catch (error) {
       console.error('Error loading growth data:', error)
@@ -109,8 +175,25 @@ export default function GrowthKPIs() {
     },
   }
 
+  // Objetivos mensais (para os círculos)
+  const monthlyTargets = {
+    chamadas: 4100,
+    agendamentosColdCalling: 200,
+    agendamentosOutros: 20,
+    mqls: 40,
+  }
+
+  // Objetivos por comercial
+  const comercialTargets: any = {
+    'David Gonçalves': { chamadas: 500, agendamentosColdCalling: 20, agendamentosOutros: 20, mqls: 10 },
+    'Marcelo Lachev': { chamadas: 1200, agendamentosColdCalling: 40, agendamentosOutros: 40, mqls: 10 },
+    'Daniela Gonçalves': { chamadas: 1200, agendamentosColdCalling: 40, agendamentosOutros: 40, mqls: 10 },
+    'Alexandre Fernandes': { chamadas: 1200, agendamentosColdCalling: 0, agendamentosOutros: 0, mqls: 10 },
+    'António Xia': { chamadas: 0, agendamentosColdCalling: 0, agendamentosOutros: 0, mqls: 0 },
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header com Objetivos Gerais */}
       <div className="card bg-gradient-to-br from-primary/20 to-primary/5 border-2 border-primary/40">
         <div className="flex items-center gap-3 mb-4">
@@ -162,6 +245,112 @@ export default function GrowthKPIs() {
           </div>
         </div>
       </div>
+
+      {/* 📊 SECÇÃO DE OBJETIVOS MENSAIS */}
+      {objetivosData && (
+        <div className="card bg-gradient-to-br from-success/10 to-success/5 border-2 border-success/30">
+          <div className="flex items-center gap-3 mb-6">
+            <CheckCircle className="w-6 h-6 text-success" />
+            <div>
+              <h2 className="text-2xl font-bold">Objetivos • {new Date().toLocaleString('pt-PT', { month: 'long', year: 'numeric' })}</h2>
+              <p className="text-sm text-gray-400">Progresso mensal da equipa</p>
+            </div>
+          </div>
+
+          {/* Círculos de Progresso */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
+            <CircularProgress
+              value={objetivosData.chamadas}
+              max={monthlyTargets.chamadas}
+              label="Chamadas"
+              color={COLORS.cyan}
+              size={140}
+            />
+            <CircularProgress
+              value={objetivosData.agendamentosColdCalling}
+              max={monthlyTargets.agendamentosColdCalling}
+              label="Agendamentos"
+              color={COLORS.success}
+              size={140}
+            />
+            <CircularProgress
+              value={objetivosData.agendamentosOutros}
+              max={monthlyTargets.agendamentosOutros}
+              label="Agendamentos (Outros)"
+              color={COLORS.warning}
+              size={140}
+            />
+            <CircularProgress
+              value={objetivosData.mqls}
+              max={monthlyTargets.mqls}
+              label="MQL's"
+              color={COLORS.purple}
+              size={140}
+            />
+          </div>
+
+          {/* Tabela por Comercial */}
+          {comercialObjetivos.length > 0 && (
+            <>
+              <h3 className="text-lg font-bold mb-4 text-gray-300">Performance por Comercial</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-700">
+                      <th className="text-left py-3 px-4">Comercial</th>
+                      <th className="text-center py-3 px-4">Chamadas</th>
+                      <th className="text-center py-3 px-4">Agendamentos (Cold calls)</th>
+                      <th className="text-center py-3 px-4">Agendamentos (Outros)</th>
+                      <th className="text-center py-3 px-4">MQL's</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comercialObjetivos
+                      .sort((a, b) => (b.chamadas + b.agendamentosColdCalling) - (a.chamadas + a.agendamentosColdCalling))
+                      .map((com, idx) => {
+                        const targets = comercialTargets[com.comercial] || {}
+                        const chamadasPercent = targets.chamadas > 0 ? (com.chamadas / targets.chamadas * 100).toFixed(0) : '-'
+                        const agendCCPercent = targets.agendamentosColdCalling > 0 ? (com.agendamentosColdCalling / targets.agendamentosColdCalling * 100).toFixed(0) : '-'
+                        const agendOutrosPercent = targets.agendamentosOutros > 0 ? (com.agendamentosOutros / targets.agendamentosOutros * 100).toFixed(0) : '-'
+                        const mqlsPercent = targets.mqls > 0 ? (com.mqls / targets.mqls * 100).toFixed(0) : '-'
+                        
+                        return (
+                          <tr key={idx} className={`border-b border-gray-800 ${idx < 3 ? 'bg-cyan-500/5' : ''}`}>
+                            <td className="py-3 px-4 font-semibold">{com.comercial}</td>
+                            <td className="text-center py-3 px-4">
+                              <div className="font-bold">{com.chamadas}</div>
+                              <div className="text-xs text-gray-400">
+                                / {targets.chamadas || 0} • {chamadasPercent !== '-' ? `${chamadasPercent}%` : '-'}
+                              </div>
+                            </td>
+                            <td className="text-center py-3 px-4">
+                              <div className="font-bold text-success">{com.agendamentosColdCalling}</div>
+                              <div className="text-xs text-gray-400">
+                                / {targets.agendamentosColdCalling || 0} • {agendCCPercent !== '-' ? `${agendCCPercent}%` : '-'}
+                              </div>
+                            </td>
+                            <td className="text-center py-3 px-4">
+                              <div className="font-bold text-warning">{com.agendamentosOutros}</div>
+                              <div className="text-xs text-gray-400">
+                                / {targets.agendamentosOutros || 0} • {agendOutrosPercent !== '-' ? `${agendOutrosPercent}%` : '-'}
+                              </div>
+                            </td>
+                            <td className="text-center py-3 px-4">
+                              <div className="font-bold text-purple-400">{com.mqls}</div>
+                              <div className="text-xs text-gray-400">
+                                / {targets.mqls || 0} • {mqlsPercent !== '-' ? `${mqlsPercent}%` : '-'}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Tabela de Pipeline Semanal */}
       <div className="card">

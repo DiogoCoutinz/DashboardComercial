@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { BarChart3, Users, UserCircle, Package, RefreshCw, DollarSign } from 'lucide-react'
+import { BarChart3, Users, UserCircle, Package, RefreshCw, DollarSign, TrendingUp } from 'lucide-react'
 import ShareButton from './ShareButton'
 
 type Props = {
@@ -10,11 +10,12 @@ type Props = {
 export default function Layout({ children }: Props) {
   const location = useLocation()
 
-  // Main tabs - 3 core reporting logics
+  // Main tabs - 4 core reporting logics
   const mainTabs = [
     { path: '/', label: 'EOD', icon: BarChart3, description: 'Prospecting' },
     { path: '/ppf', label: 'PPF', icon: Users, description: 'Performance Pós-First' },
     { path: '/mf', label: 'MF', icon: DollarSign, description: 'Projetos Fechados' },
+    { path: '/growth', label: 'Growth KPIs', icon: TrendingUp, description: 'Objetivos & Metas' },
   ]
 
   // Secondary navigation (only for EOD)
@@ -28,6 +29,7 @@ export default function Layout({ children }: Props) {
                        location.pathname === '/comerciais' || 
                        location.pathname === '/canais' || 
                        location.pathname === '/funil'
+  const isGrowthSection = location.pathname === '/growth'
 
   const handleRefresh = () => {
     window.location.reload()
@@ -62,6 +64,7 @@ export default function Layout({ children }: Props) {
               const Icon = tab.icon
               const isActive = tab.path === '/ppf' ? location.pathname === '/ppf' :
                               tab.path === '/mf' ? location.pathname === '/mf' :
+                              tab.path === '/growth' ? isGrowthSection :
                               isEODSection
               return (
                 <Link
