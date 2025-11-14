@@ -17,6 +17,7 @@ export const COLORS = {
   pink: '#ec4899',
   cyan: '#06b6d4',
   orange: '#f97316',
+  gray: '#6b7280',
 }
 
 export const CHART_COLORS = [

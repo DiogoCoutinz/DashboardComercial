@@ -68,7 +68,17 @@ export async function getGlobalKPIsMF(filters: FiltersMF = {}) {
   
   const totalProjetos = registos.length
   const totalReceita = registos.reduce((acc, r) => acc + (r.ticket || 0), 0)
-  const ticketMedio = totalProjetos > 0 ? totalReceita / totalProjetos : 0
+  
+  // ✅ FIX: Ticket Médio apenas de projetos com receita > 0
+  const projetosComReceita = registos.filter(r => (r.ticket || 0) > 0)
+  const ticketMedio = projetosComReceita.length > 0 
+    ? projetosComReceita.reduce((acc, r) => acc + (r.ticket || 0), 0) / projetosComReceita.length 
+    : 0
+  
+  // ✅ Receita Mensal Recorrente (prestações)
+  const receitaMensalRecorrente = registos
+    .filter(r => r.modo_pagamento?.toLowerCase().includes('presta'))
+    .reduce((acc, r) => acc + (r.ticket || 0), 0)
   
   // Breakdown by offer
   const byOffer = registos.reduce((acc, r) => {
@@ -85,14 +95,14 @@ export async function getGlobalKPIsMF(filters: FiltersMF = {}) {
   const byPaymentMode = registos.reduce((acc, r) => {
     const mode = r.modo_pagamento || 'Não definido'
     if (!acc[mode]) {
-      acc[mode] = { count: 0, receita: 0 }
+      acc[mode] = { count: 0, receita: 0, percentReceita: 0 }
     }
     acc[mode].count++
     acc[mode].receita += r.ticket || 0
     return acc
-  }, {} as Record<string, { count: number; receita: number }>)
+  }, {} as Record<string, { count: number; receita: number; percentReceita: number }>)
   
-  // Breakdown by acquisition channel
+  // Breakdown by acquisition channel (✅ com ticket médio)
   const byChannel = registos.reduce((acc, r) => {
     if (!r.canal_aquisicao) return acc
     if (!acc[r.canal_aquisicao]) {
@@ -103,10 +113,18 @@ export async function getGlobalKPIsMF(filters: FiltersMF = {}) {
     return acc
   }, {} as Record<string, { count: number; receita: number }>)
   
+  // ✅ Calcular % de valor em cada modo de pagamento
+  Object.keys(byPaymentMode).forEach(mode => {
+    byPaymentMode[mode].percentReceita = totalReceita > 0 
+      ? (byPaymentMode[mode].receita / totalReceita) * 100 
+      : 0
+  })
+  
   return {
     totalProjetos,
     totalReceita,
     ticketMedio,
+    receitaMensalRecorrente,
     byOffer,
     byPaymentMode,
     byChannel,
@@ -183,8 +201,8 @@ export async function getMonthlyTrendMF(filters: FiltersMF = {}) {
   })
 }
 
-// Get data by market (mercado)
-export async function getDataByMarketMF(filters: FiltersMF = {}) {
+// Get data by market (mercado) - ✅ Filtra mercados sem receita
+export async function getDataByMarketMF(filters: FiltersMF = {}, includeZeroRevenue = false) {
   const registos = await getRegistosMF({ ...filters, tipoRegisto: 'projeto' })
   
   const byMarket = registos.reduce((acc, r) => {
@@ -201,7 +219,14 @@ export async function getDataByMarketMF(filters: FiltersMF = {}) {
     return acc
   }, {} as Record<string, any>)
   
-  return Object.values(byMarket).sort((a, b) => b.receita - a.receita)
+  let markets = Object.values(byMarket)
+  
+  // ✅ Ocultar mercados sem receita por padrão
+  if (!includeZeroRevenue) {
+    markets = markets.filter((m: any) => m.receita > 0)
+  }
+  
+  return markets.sort((a, b) => b.receita - a.receita)
 }
 
 // Get filter options for MF

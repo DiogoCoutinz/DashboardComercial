@@ -10,14 +10,24 @@ type Props = {
 export default function Layout({ children }: Props) {
   const location = useLocation()
 
-  const navItems = [
-    { path: '/', label: 'EOD', icon: BarChart3 },
-    { path: '/ppf', label: 'PPF', icon: Users },
-    { path: '/mf', label: 'MF', icon: DollarSign },
+  // Main tabs - 3 core reporting logics
+  const mainTabs = [
+    { path: '/', label: 'EOD', icon: BarChart3, description: 'Prospecting' },
+    { path: '/ppf', label: 'PPF', icon: Users, description: 'Performance Pós-First' },
+    { path: '/mf', label: 'MF', icon: DollarSign, description: 'Projetos Fechados' },
+  ]
+
+  // Secondary navigation (only for EOD)
+  const secondaryNav = [
     { path: '/comerciais', label: 'Comerciais', icon: UserCircle },
     { path: '/canais', label: 'Canais', icon: Package },
-    { path: '/funil', label: 'Funil EOD', icon: BarChart3 },
+    { path: '/funil', label: 'Funil', icon: BarChart3 },
   ]
+
+  const isEODSection = location.pathname === '/' || 
+                       location.pathname === '/comerciais' || 
+                       location.pathname === '/canais' || 
+                       location.pathname === '/funil'
 
   const handleRefresh = () => {
     window.location.reload()
@@ -44,33 +54,68 @@ export default function Layout({ children }: Props) {
         </div>
       </header>
 
-      {/* Navigation */}
+      {/* Main Navigation - 3 Core Tabs */}
       <nav className="border-b border-gray-800 bg-black/30">
         <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex overflow-x-auto">
-            {navItems.map((item) => {
-              const Icon = item.icon
-              const isActive = location.pathname === item.path
+          <div className="flex gap-2 py-2">
+            {mainTabs.map((tab) => {
+              const Icon = tab.icon
+              const isActive = tab.path === '/ppf' ? location.pathname === '/ppf' :
+                              tab.path === '/mf' ? location.pathname === '/mf' :
+                              isEODSection
               return (
                 <Link
-                  key={item.path}
-                  to={item.path}
+                  key={tab.path}
+                  to={tab.path}
                   className={`
-                    flex items-center gap-2 px-4 py-3 border-b-2 transition-all text-sm whitespace-nowrap
+                    flex-1 flex flex-col items-center gap-1 px-6 py-3 rounded-lg transition-all
                     ${isActive
-                      ? 'text-primary border-primary'
-                      : 'text-gray-400 border-transparent hover:text-gray-200'
+                      ? 'bg-primary/20 text-primary border-2 border-primary/40'
+                      : 'bg-dark-card text-gray-400 border-2 border-transparent hover:text-gray-200 hover:border-gray-700'
                     }
                   `}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.label}</span>
+                  <div className="flex items-center gap-2">
+                    <Icon className="w-5 h-5" />
+                    <span className="text-lg font-bold">{tab.label}</span>
+                  </div>
+                  <span className="text-xs opacity-75">{tab.description}</span>
                 </Link>
               )
             })}
           </div>
         </div>
       </nav>
+
+      {/* Secondary Navigation - EOD Sub-sections */}
+      {isEODSection && (
+        <nav className="border-b border-gray-800 bg-black/20">
+          <div className="container mx-auto px-4 sm:px-6">
+            <div className="flex overflow-x-auto">
+              {secondaryNav.map((item) => {
+                const Icon = item.icon
+                const isActive = location.pathname === item.path
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`
+                      flex items-center gap-2 px-4 py-2 border-b-2 transition-all text-sm whitespace-nowrap
+                      ${isActive
+                        ? 'text-primary border-primary'
+                        : 'text-gray-400 border-transparent hover:text-gray-200'
+                      }
+                    `}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        </nav>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-4 sm:py-6">

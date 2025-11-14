@@ -10,10 +10,12 @@ import {
 } from '@/lib/queriesMF'
 import { type FiltersMF as FiltersMFType } from '@/lib/supabase'
 import FiltersMF from '@/components/FiltersMF'
+import FilterModal from '@/components/FilterModal'
 import QuickPeriodSelector from '@/components/QuickPeriodSelector'
 import LoadingState from '@/components/LoadingState'
 import SimpleBarChart from '@/components/SimpleBarChart'
-import { TrendingUp, DollarSign, Package, BarChart3 } from 'lucide-react'
+import LineChart from '@/components/LineChart'
+import { TrendingUp, DollarSign, Package, BarChart3, Filter } from 'lucide-react'
 import { COLORS } from '@/lib/constants'
 import { formatCurrency } from '@/lib/format'
 
@@ -26,6 +28,8 @@ export default function MF() {
   const [monthlyTrend, setMonthlyTrend] = useState<any[]>([])
   const [marketData, setMarketData] = useState<any[]>([])
   const [projetos, setProjetos] = useState<any[]>([])
+  const [closerFilter, setCloserFilter] = useState<string>('')
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
 
   useEffect(() => {
     const filters: FiltersMFType = {
@@ -71,19 +75,25 @@ export default function MF() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold"> MF — Projetos Fechados</h2>
-          <p className="text-sm text-gray-400 mt-1">Receita gerada e projetos concretizados</p>
-        </div>
+      {/* Período Rápido + Filtros */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <QuickPeriodSelector />
+        <button
+          onClick={() => setIsFilterModalOpen(true)}
+          className="btn bg-dark-card border border-gray-700 hover:border-primary flex items-center gap-2"
+        >
+          <Filter className="w-4 h-4" />
+          Filtros Avançados
+        </button>
       </div>
 
-      <QuickPeriodSelector />
-      <FiltersMF />
+      {/* Modal de Filtros */}
+      <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)}>
+        <FiltersMF />
+      </FilterModal>
 
       {/* 💰 SECÇÃO 1: KPIS PRINCIPAIS */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card bg-gradient-to-br from-success/20 to-success/5 border-2 border-success/40">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm text-gray-400">Total Receita</div>
@@ -103,7 +113,19 @@ export default function MF() {
           <div className="text-4xl font-bold text-primary mb-1">
             {formatCurrency(kpis.ticketMedio)}
           </div>
-          <div className="text-xs text-gray-400">por projeto</div>
+          <div className="text-xs text-gray-400">projetos com receita</div>
+        </div>
+
+        {/* ✅ Novo Card: Receita Mensal Recorrente */}
+        <div className="card bg-gradient-to-br from-cyan-500/20 to-cyan-600/5 border-2 border-cyan-500/40">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm text-gray-400">Receita Mensal (Prestações)</div>
+            <TrendingUp className="w-5 h-5 text-cyan-400" />
+          </div>
+          <div className="text-4xl font-bold text-cyan-400 mb-1">
+            {formatCurrency(kpis.receitaMensalRecorrente)}
+          </div>
+          <div className="text-xs text-gray-400">Total em prestações</div>
         </div>
 
         <div className="card bg-gradient-to-br from-warning/20 to-warning/5 border-2 border-warning/40">
@@ -163,17 +185,23 @@ export default function MF() {
           <h3 className="text-lg font-bold mb-4">Modo de Pagamento</h3>
           <div className="space-y-3">
             {Object.entries(kpis.byPaymentMode).map(([mode, data]: [string, any]) => (
-              <div key={mode} className="flex items-center justify-between p-3 bg-dark-hover rounded-lg">
-                <div>
+              <div key={mode} className="p-3 bg-dark-hover rounded-lg">
+                <div className="flex items-center justify-between mb-2">
                   <div className="font-medium">{mode}</div>
-                  <div className="text-xs text-gray-400">{data.count} projetos</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-success">
+                  <div className="text-xl font-bold text-success">
                     {formatCurrency(data.receita)}
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {((data.receita / kpis.totalReceita) * 100).toFixed(0)}%
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-gray-400">{data.count} projetos</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-400">{(data.percentReceita || 0).toFixed(0)}% do total</span>
+                    <div className="w-16 h-2 bg-dark rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-success transition-all"
+                        style={{ width: `${Math.min(data.percentReceita || 0, 100)}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -181,35 +209,40 @@ export default function MF() {
           </div>
         </div>
 
-        {/* 🎯 CANAL DE AQUISIÇÃO */}
+        {/* 🎯 CANAL DE AQUISIÇÃO - ✅ com ticket médio */}
         <div className="card">
           <h3 className="text-lg font-bold mb-4">Canal de Aquisição</h3>
           <div className="space-y-3">
-            {Object.entries(kpis.byChannel).map(([channel, data]: [string, any]) => (
-              <div key={channel} className="flex items-center justify-between p-3 bg-dark-hover rounded-lg">
-                <div>
-                  <div className="font-medium">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      channel === 'Cold Calling' ? 'bg-blue-500/20 text-blue-300' :
-                      channel === 'Anúncios' ? 'bg-orange-500/20 text-orange-300' :
-                      channel === 'Email Marketing' ? 'bg-cyan-500/20 text-cyan-300' :
-                      'bg-gray-500/20 text-gray-300'
-                    }`}>
-                      {channel}
-                    </span>
+            {Object.entries(kpis.byChannel).map(([channel, data]: [string, any]) => {
+              const ticketMedio = data.count > 0 ? data.receita / data.count : 0
+              return (
+                <div key={channel} className="p-3 bg-dark-hover rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        channel === 'Cold Calling' ? 'bg-blue-500/20 text-blue-300' :
+                        channel === 'Anúncios' ? 'bg-orange-500/20 text-orange-300' :
+                        channel === 'Email Marketing' ? 'bg-cyan-500/20 text-cyan-300' :
+                        'bg-gray-500/20 text-gray-300'
+                      }`}>
+                        {channel}
+                      </span>
+                    </div>
+                    <div className="text-lg font-bold text-success">
+                      {formatCurrency(data.receita)}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-400 mt-1">{data.count} projetos</div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-400">{data.count} projetos</span>
+                    <div className="text-right">
+                      <span className="text-primary font-semibold">
+                        Ticket médio: {formatCurrency(ticketMedio)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-success">
-                    {formatCurrency(data.receita)}
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    {((data.receita / kpis.totalReceita) * 100).toFixed(0)}%
-                  </div>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
@@ -218,17 +251,37 @@ export default function MF() {
       {(closerData.length > 0 || comercialData.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {closerData.length > 0 && (
-            <SimpleBarChart
-              data={closerData.map(c => ({
-                name: c.closer,
-                Receita: c.receita,
-                Projetos: c.projetos,
-              }))}
-              title="🏆 Performance por Closer"
-              dataKeys={[
-                { key: 'Receita', label: 'Receita (€)', color: COLORS.success },
-              ]}
-            />
+            <div className="card">
+              <h3 className="text-lg font-semibold mb-4">🏆 Performance por Closer</h3>
+              <div className="space-y-3">
+                {closerData.map((c, idx) => {
+                  // ✅ Close Rate = projetos / SQLs (se tivermos essa info)
+                  // Para já mostramos apenas os dados que temos
+                  return (
+                    <div key={idx} className="bg-dark-hover rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold">{c.closer}</span>
+                        <div className="text-right">
+                          <div className="text-xl font-bold text-success">
+                            {formatCurrency(c.receita)}
+                          </div>
+                          <div className="text-xs text-gray-400">{c.projetos} projetos</div>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-dark rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-success transition-all"
+                          style={{ width: `${Math.min((c.receita / Math.max(...closerData.map(x => x.receita))) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="mt-4 p-3 bg-primary/10 border border-primary/30 rounded-lg text-xs text-gray-300">
+                💡 <strong>Nota:</strong> Close Rate requer integração com dados de SQLs do PPF
+              </div>
+            </div>
           )}
 
           {comercialData.length > 0 && (
@@ -247,9 +300,9 @@ export default function MF() {
         </div>
       )}
 
-      {/* 📈 SECÇÃO 5: EVOLUÇÃO MENSAL */}
+      {/* 📈 SECÇÃO 5: EVOLUÇÃO MENSAL - ✅ Gráfico de Linha com Duplo Eixo */}
       {monthlyTrend.length > 0 && (
-        <SimpleBarChart
+        <LineChart
           data={monthlyTrend.map(m => ({
             name: m.mes,
             Receita: m.receita,
@@ -257,19 +310,25 @@ export default function MF() {
           }))}
           title="📈 Evolução Mensal"
           dataKeys={[
-            { key: 'Receita', label: 'Receita (€)', color: COLORS.success },
-            { key: 'Projetos', label: 'Projetos', color: COLORS.primary },
+            { key: 'Receita', label: 'Receita (€)', color: COLORS.success, yAxisId: 'left' },
+            { key: 'Projetos', label: 'Projetos', color: COLORS.warning, yAxisId: 'right' },
           ]}
+          dualAxis={true}
         />
       )}
 
-      {/* 🏢 SECÇÃO 6: MERCADOS */}
+      {/* 🏢 SECÇÃO 6: MERCADOS - ✅ Ocultando mercados sem receita */}
       {marketData.length > 0 && (
         <div className="card">
-          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-success" />
-            Performance por Mercado
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-success" />
+              Performance por Mercado
+            </h3>
+            <div className="text-xs text-gray-400">
+              Apenas mercados com receita
+            </div>
+          </div>
           
           <div className="overflow-x-auto">
             <table>
@@ -304,13 +363,26 @@ export default function MF() {
         </div>
       )}
 
-      {/* 📋 SECÇÃO 7: LISTA DE PROJETOS */}
+      {/* 📋 SECÇÃO 7: LISTA DE PROJETOS - ✅ com filtro por closer */}
       {projetos.length > 0 && (
         <div className="card">
-          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <Package className="w-5 h-5 text-warning" />
-            Últimos Projetos Fechados
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <Package className="w-5 h-5 text-warning" />
+              Últimos Projetos Fechados
+            </h3>
+            {/* ✅ Filtro por Closer */}
+            <select
+              value={closerFilter}
+              onChange={(e) => setCloserFilter(e.target.value)}
+              className="px-3 py-2 bg-dark-card border border-gray-700 rounded-lg text-sm focus:border-primary focus:outline-none"
+            >
+              <option value="">Todos os Closers</option>
+              {Array.from(new Set(projetos.map(p => p.closer).filter(Boolean))).sort().map(closer => (
+                <option key={closer} value={closer}>{closer}</option>
+              ))}
+            </select>
+          </div>
           
           <div className="overflow-x-auto">
             <table>
@@ -328,7 +400,10 @@ export default function MF() {
                 </tr>
               </thead>
               <tbody>
-                {projetos.slice(0, 20).map((proj) => (
+                {projetos
+                  .filter(p => !closerFilter || p.closer === closerFilter)
+                  .slice(0, 20)
+                  .map((proj) => (
                   <tr key={proj.id}>
                     <td className="text-sm">{new Date(proj.dia).toLocaleDateString('pt-PT')}</td>
                     <td className="font-medium">{proj.cliente}</td>
@@ -362,9 +437,9 @@ export default function MF() {
             </table>
           </div>
 
-          {projetos.length > 20 && (
+          {projetos.filter(p => !closerFilter || p.closer === closerFilter).length > 20 && (
             <div className="mt-4 text-center text-sm text-gray-400">
-              A mostrar 20 de {projetos.length} projetos. Use os filtros para refinar.
+              A mostrar 20 de {projetos.filter(p => !closerFilter || p.closer === closerFilter).length} projetos{closerFilter && ` de ${closerFilter}`}. Use os filtros para refinar.
             </div>
           )}
         </div>
@@ -372,4 +447,5 @@ export default function MF() {
     </div>
   )
 }
+
 

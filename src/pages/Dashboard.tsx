@@ -4,10 +4,12 @@ import { getGlobalKPIs, getDataByDay, getDataByComercial, getDataByCanal, getReg
 import { type Filters as FilterType } from '@/lib/supabase'
 import MonthTrend from '@/components/MonthTrend'
 import SimpleBarChart from '@/components/SimpleBarChart'
+import PieChart from '@/components/PieChart'
 import Filters from '@/components/Filters'
+import FilterModal from '@/components/FilterModal'
 import QuickPeriodSelector from '@/components/QuickPeriodSelector'
 import LoadingState from '@/components/LoadingState'
-import { Phone, Users, Calendar, Target, Mail, Megaphone, UserPlus } from 'lucide-react'
+import { Phone, Users, Calendar, Target, Mail, Megaphone, UserPlus, TrendingUp, CheckCircle, Filter } from 'lucide-react'
 import { COLORS } from '@/lib/constants'
 
 export default function Dashboard() {
@@ -18,6 +20,7 @@ export default function Dashboard() {
   const [comercialData, setComercialData] = useState<any[]>([])
   const [canalData, setCanalData] = useState<any[]>([])
   const [registos, setRegistos] = useState<any[]>([])
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
 
   useEffect(() => {
     const filters: FilterType = {
@@ -89,53 +92,109 @@ export default function Dashboard() {
     respostasQual: acc.respostasQual + r.respostas_qualificadas,
   }), { mensagens: 0, respostas: 0, respostasQual: 0 })
 
+  // Calculate quality metrics
+  const totalDecisoresAbordados = registos.reduce((sum, r) => sum + r.decisores_abordados, 0)
+  const totalDecisoresQualificados = registos.reduce((sum, r) => sum + r.decisores_qualificados, 0)
+  const taxaQualificacao = totalDecisoresAbordados > 0 
+    ? (totalDecisoresQualificados / totalDecisoresAbordados) * 100 
+    : 0
+
+  // Calculate overall conversion (Show-ups / Total Leads)
+  const totalLeadsSubmetidas = kpis.submissoes + kpis.mensagens_emails_referencias
+  const taxaConversaoGeral = totalLeadsSubmetidas > 0 
+    ? (kpis.leads_compareceram / totalLeadsSubmetidas) * 100 
+    : 0
+
+  // Prepare distribution data for pie chart
+  const distributionData = canalData
+    .filter(c => c.agendamentos > 0)
+    .map(c => {
+      let color = COLORS.gray
+      if (c.canal === 'Cold Calling') color = COLORS.primary
+      else if (c.canal === 'Anúncios') color = COLORS.warning
+      else if (c.canal === 'Email Marketing') color = COLORS.cyan
+      else if (c.canal === 'Referências') color = COLORS.pink
+      return {
+        name: c.canal,
+        value: c.agendamentos,
+        color,
+      }
+    })
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-    <div>
-          <h2 className="text-3xl font-bold">Dashboard Comercial</h2>
-          <p className="text-sm text-gray-400 mt-1">Performance em tempo real da equipa BoomLab</p>
+      {/* Período Rápido + Filtros */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <QuickPeriodSelector />
+        <button
+          onClick={() => setIsFilterModalOpen(true)}
+          className="btn bg-dark-card border border-gray-700 hover:border-primary flex items-center gap-2"
+        >
+          <Filter className="w-4 h-4" />
+          Filtros Avançados
+        </button>
+      </div>
+
+      {/* Modal de Filtros */}
+      <FilterModal isOpen={isFilterModalOpen} onClose={() => setIsFilterModalOpen(false)}>
+        <Filters />
+      </FilterModal>
+
+      {/* 🔥 BIG CARDS - KPIs PRINCIPAIS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Agendamentos Totais */}
+        <div className="card bg-gradient-to-br from-success/30 to-success/10 border-2 border-success/50 hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between mb-3">
+            <Calendar className="w-8 h-8 text-success" />
+            <TrendingUp className="w-5 h-5 text-success/60" />
+          </div>
+          <div className="text-sm text-gray-300 mb-1">Agendamentos</div>
+          <div className="text-5xl font-bold text-success mb-2">{kpis.agendamentos}</div>
+          <div className="text-xs text-gray-400">Todas as fontes</div>
         </div>
-      </div>
 
-      {/* Quick Period Selector */}
-      <QuickPeriodSelector />
-      <Filters />
+        {/* Show-ups */}
+        <div className="card bg-gradient-to-br from-primary/30 to-primary/10 border-2 border-primary/50 hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between mb-3">
+            <CheckCircle className="w-8 h-8 text-primary" />
+            <Users className="w-5 h-5 text-primary/60" />
+          </div>
+          <div className="text-sm text-gray-300 mb-1">Show-ups</div>
+          <div className="text-5xl font-bold text-primary mb-2">{kpis.leads_compareceram}</div>
+          <div className="text-xs text-gray-400">Compareceram</div>
+        </div>
 
-      {/* 🔥 KPIs UNIVERSAIS - O QUE É COMUM A TODOS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div className="card bg-gradient-to-br from-green-500/20 to-green-600/10 border-green-500/30">
-          <div className="flex items-center gap-2 text-xs text-green-300 mb-2">
-            <Calendar className="w-4 h-4" />
-            Total Agendamentos
+        {/* Taxa Comparecimento */}
+        <div className="card bg-gradient-to-br from-cyan-500/30 to-cyan-600/10 border-2 border-cyan-500/50 hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between mb-3">
+            <Target className="w-8 h-8 text-cyan-400" />
+            <div className="text-xs text-cyan-300">Show-up Rate</div>
           </div>
-          <div className="text-5xl font-bold">{kpis.agendamentos}</div>
-          <div className="text-xs text-gray-400 mt-2">
-            Todas as fontes
-          </div>
-      </div>
+          <div className="text-sm text-gray-300 mb-1">Taxa Comparecência</div>
+          <div className="text-5xl font-bold text-cyan-400 mb-2">{kpis.taxaShowUp.toFixed(0)}%</div>
+          <div className="text-xs text-gray-400">{kpis.leads_compareceram}/{kpis.leads_agendadas}</div>
+        </div>
 
-        <div className="card bg-gradient-to-br from-blue-500/20 to-blue-600/10 border-blue-500/30">
-          <div className="flex items-center gap-2 text-xs text-blue-300 mb-2">
-            <Users className="w-4 h-4" />
-            Show-ups
+        {/* Leads Submetidas */}
+        <div className="card bg-gradient-to-br from-warning/30 to-warning/10 border-2 border-warning/50 hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between mb-3">
+            <Mail className="w-8 h-8 text-warning" />
+            <Megaphone className="w-5 h-5 text-warning/60" />
           </div>
-          <div className="text-5xl font-bold">{kpis.leads_compareceram}</div>
-          <div className="text-xs text-gray-400 mt-2">
-            Taxa: {kpis.taxaShowUp.toFixed(1)}%
-          </div>
-      </div>
+          <div className="text-sm text-gray-300 mb-1">Leads Submetidas</div>
+          <div className="text-5xl font-bold text-warning mb-2">{totalLeadsSubmetidas}</div>
+          <div className="text-xs text-gray-400">Ads + Email</div>
+        </div>
 
-        <div className="card bg-gradient-to-br from-purple-500/20 to-purple-600/10 border-purple-500/30">
-          <div className="flex items-center gap-2 text-xs text-purple-300 mb-2">
-            <Target className="w-4 h-4" />
-            Leads Agendadas
+        {/* Taxa Conversão Geral */}
+        <div className="card bg-gradient-to-br from-purple-500/30 to-purple-600/10 border-2 border-purple-500/50 hover:scale-105 transition-transform">
+          <div className="flex items-center justify-between mb-3">
+            <TrendingUp className="w-8 h-8 text-purple-400" />
+            <div className="text-xs text-purple-300">Conversão</div>
           </div>
-          <div className="text-5xl font-bold">{kpis.leads_agendadas}</div>
-          <div className="text-xs text-gray-400 mt-2">
-            Para futuro
-          </div>
+          <div className="text-sm text-gray-300 mb-1">Taxa Conversão Geral</div>
+          <div className="text-5xl font-bold text-purple-400 mb-2">{taxaConversaoGeral.toFixed(1)}%</div>
+          <div className="text-xs text-gray-400">Show-ups/Leads</div>
         </div>
       </div>
 
@@ -260,7 +319,95 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Gráficos */}
+      {/* 📊 DISTRIBUIÇÃO & QUALIDADE */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Distribuição por Canal */}
+        {distributionData.length > 0 && (
+          <PieChart
+            data={distributionData}
+            title="📊 Distribuição de Agendamentos por Canal"
+            innerRadius={70}
+          />
+        )}
+
+        {/* Métricas de Qualidade */}
+        <div className="card border-success/20">
+          <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Target className="w-5 h-5 text-success" />
+            Métricas de Qualidade
+          </h3>
+          
+          <div className="space-y-4">
+            {/* Decisores */}
+            <div className="bg-dark-hover rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-400">Decisores</span>
+                <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">Cold Calling</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Abordados</div>
+                  <div className="text-2xl font-bold">{totalDecisoresAbordados}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Qualificados</div>
+                  <div className="text-2xl font-bold text-success">{totalDecisoresQualificados}</div>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-gray-700">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-400">Taxa de Qualificação</span>
+                  <span className="text-lg font-bold text-primary">{taxaQualificacao.toFixed(1)}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Respostas Qualificadas */}
+            <div className="bg-dark-hover rounded-lg p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-400">Email & Referências</span>
+                <span className="text-xs bg-cyan-500/20 text-cyan-300 px-2 py-1 rounded">Outbound</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Mensagens Enviadas</div>
+                  <div className="text-2xl font-bold">{emailKPIs.mensagens + referenciasKPIs.mensagens}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Respostas Qualificadas</div>
+                  <div className="text-2xl font-bold text-success">{emailKPIs.respostasQual + referenciasKPIs.respostasQual}</div>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-gray-700">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-400">Taxa de Resposta</span>
+                  <span className="text-lg font-bold text-cyan-400">
+                    {emailKPIs.mensagens + referenciasKPIs.mensagens > 0 
+                      ? ((emailKPIs.respostas + referenciasKPIs.respostas) / (emailKPIs.mensagens + referenciasKPIs.mensagens) * 100).toFixed(1)
+                      : 0}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tempo Médio de Resposta */}
+            {kpis.tempo_medio_resposta && (
+              <div className="bg-dark-hover rounded-lg p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-400">Tempo Médio de Resposta</span>
+                  <span className="text-xs bg-warning/20 text-warning px-2 py-1 rounded">Ads</span>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-warning">{kpis.tempo_medio_resposta.toFixed(0)}h</div>
+                  <div className="text-xs text-gray-500 mt-1">Tempo até contacto</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Gráficos de Performance */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Evolução Temporal */}
         {dailyData.length > 0 && (
