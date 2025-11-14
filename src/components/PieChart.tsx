@@ -34,6 +34,13 @@ export default function PieChart({ data, title, innerRadius = 60 }: Props) {
               backgroundColor: '#1a1a1a',
               border: '1px solid #2a2a2a',
               borderRadius: '8px',
+              color: '#ffffff',
+            }}
+            itemStyle={{
+              color: '#ffffff',
+            }}
+            labelStyle={{
+              color: '#ffffff',
             }}
             formatter={(value: number) => [
               `${value} (${((value / total) * 100).toFixed(1)}%)`,

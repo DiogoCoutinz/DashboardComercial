@@ -26,16 +26,63 @@ export default function GrowthKPIs() {
     }
 
     try {
-      // 1. Buscar dados PPF agregados por semana
+      // 1. Buscar dados EOD para total de agendamentos por semana
+      const { data: eodWeekData } = await supabase
+        .from('comercial_registos_eod')
+        .select('*')
+        .gte('dia', '2025-10-01') // Q4 2025
+        .order('semana', { ascending: true })
+
+      // 2. Buscar dados PPF agregados por semana (SEM duplicados)
+      // Vamos buscar e depois filtrar por DIA único
       const { data: ppfData } = await supabase
         .from('comercial_registos_ppf')
         .select('*')
         .gte('dia', '2025-10-01') // Q4 2025
         .order('semana', { ascending: true })
 
-      if (ppfData) {
-        // Agrupar por semana
-        const byWeek = ppfData.reduce((acc: any, r: any) => {
+      if (ppfData && eodWeekData) {
+        // ✅ AGRUPAR POR DIA primeiro para evitar duplicação por closer/offer
+        const ppfByDay = ppfData.reduce((acc: any, r: any) => {
+          const key = `${r.dia}_${r.semana}`
+          if (!acc[key]) {
+            acc[key] = {
+              dia: r.dia,
+              semana: r.semana,
+              discoverys: 0,
+              comparecimentos_discovery: 0,
+              discoverys_no_shows: 0,
+              discoverys_reagendadas: 0,
+              follow_ups: 0,
+              follow_ups_no_shows: 0,
+              follow_ups_reagendadas: 0,
+              qas: 0,
+              qas_no_shows: 0,
+              qas_reagendadas: 0,
+              mqls: 0,
+              sqls: 0,
+              verbal_agreements: 0,
+            }
+          }
+          // Somar valores por dia
+          acc[key].discoverys += r.discoverys || 0
+          acc[key].comparecimentos_discovery += r.comparecimentos_discovery || 0
+          acc[key].discoverys_no_shows += r.discoverys_no_shows || 0
+          acc[key].discoverys_reagendadas += r.discoverys_reagendadas || 0
+          acc[key].follow_ups += r.follow_ups || 0
+          acc[key].follow_ups_no_shows += r.follow_ups_no_shows || 0
+          acc[key].follow_ups_reagendadas += r.follow_ups_reagendadas || 0
+          acc[key].qas += r.qas || 0
+          acc[key].qas_no_shows += r.qas_no_shows || 0
+          acc[key].qas_reagendadas += r.qas_reagendadas || 0
+          acc[key].mqls += r.mqls || 0
+          acc[key].sqls += r.sqls || 0
+          acc[key].verbal_agreements += r.verbal_agreements || 0
+          return acc
+        }, {})
+
+        // Agora agrupar por SEMANA
+        const byWeek: any = Object.values(ppfByDay).reduce((acc: any, r: any) => {
           const week = r.semana || 'S/N'
           if (!acc[week]) {
             acc[week] = {
@@ -52,18 +99,38 @@ export default function GrowthKPIs() {
               verbal_agreements: 0,
             }
           }
-          acc[week].agendamentos += r.leads_agendadas_discovery || 0
-          acc[week].discoverys += r.discoverys || 0
-          acc[week].comparecimentos_discovery += r.comparecimentos_discovery || 0
-          acc[week].no_shows += (r.discoverys_no_shows || 0) + (r.follow_ups_no_shows || 0) + (r.qas_no_shows || 0)
-          acc[week].reagendadas += (r.discoverys_reagendadas || 0) + (r.follow_ups_reagendadas || 0) + (r.qas_reagendadas || 0)
-          acc[week].follow_ups += r.follow_ups || 0
-          acc[week].qas += r.qas || 0
-          acc[week].mqls += r.mqls || 0
-          acc[week].sqls += r.sqls || 0
-          acc[week].verbal_agreements += r.verbal_agreements || 0
+          acc[week].discoverys += r.discoverys
+          acc[week].comparecimentos_discovery += r.comparecimentos_discovery
+          acc[week].no_shows += r.discoverys_no_shows + r.follow_ups_no_shows + r.qas_no_shows
+          acc[week].reagendadas += r.discoverys_reagendadas + r.follow_ups_reagendadas + r.qas_reagendadas
+          acc[week].follow_ups += r.follow_ups
+          acc[week].qas += r.qas
+          acc[week].mqls += r.mqls
+          acc[week].sqls += r.sqls
+          acc[week].verbal_agreements += r.verbal_agreements
           return acc
         }, {})
+
+        // ✅ Adicionar agendamentos do EOD por semana
+        eodWeekData.forEach((r: any) => {
+          const week = r.semana || 'S/N'
+          if (!byWeek[week]) {
+            byWeek[week] = {
+              semana: week,
+              agendamentos: 0,
+              discoverys: 0,
+              comparecimentos_discovery: 0,
+              no_shows: 0,
+              reagendadas: 0,
+              follow_ups: 0,
+              qas: 0,
+              mqls: 0,
+              sqls: 0,
+              verbal_agreements: 0,
+            }
+          }
+          byWeek[week].agendamentos += r.agendamentos || 0
+        })
 
         setWeeklyData(Object.values(byWeek))
       }
@@ -93,6 +160,8 @@ export default function GrowthKPIs() {
         const totalAgendamentosOutros = eodData
           .filter(r => r.canal_aquisicao !== 'Cold Calling')
           .reduce((sum, r) => sum + (r.agendamentos || 0), 0)
+        
+        // ✅ MQLs vêm do PPF (campo mqls = total)
         const totalMQLs = ppfMonthData.reduce((sum, r) => sum + (r.mqls || 0), 0)
 
         setObjetivosData({
@@ -123,10 +192,11 @@ export default function GrowthKPIs() {
           return acc
         }, {})
 
-        // Adicionar MQLs por comercial de origem
+        // ✅ Adicionar MQLs por comercial de origem (campo mqls_comercial)
         ppfMonthData.forEach((r: any) => {
-          if (r.comercial_origem && byComercial[r.comercial_origem]) {
-            byComercial[r.comercial_origem].mqls += r.mqls_comercial || 0
+          const comercialOrigem = r.comercial_origem
+          if (comercialOrigem && byComercial[comercialOrigem]) {
+            byComercial[comercialOrigem].mqls += r.mqls_comercial || 0
           }
         })
 
@@ -178,7 +248,7 @@ export default function GrowthKPIs() {
   // Objetivos mensais (para os círculos)
   const monthlyTargets = {
     chamadas: 4100,
-    agendamentosColdCalling: 200,
+    agendamentos: 200, // Total (Cold Calling + Outros)
     agendamentosOutros: 20,
     mqls: 40,
   }
@@ -258,34 +328,20 @@ export default function GrowthKPIs() {
           </div>
 
           {/* Círculos de Progresso */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-12 mb-8 max-w-3xl mx-auto">
             <CircularProgress
               value={objetivosData.chamadas}
               max={monthlyTargets.chamadas}
               label="Chamadas"
               color={COLORS.cyan}
-              size={140}
+              size={160}
             />
             <CircularProgress
-              value={objetivosData.agendamentosColdCalling}
-              max={monthlyTargets.agendamentosColdCalling}
+              value={objetivosData.agendamentosColdCalling + objetivosData.agendamentosOutros}
+              max={monthlyTargets.agendamentos}
               label="Agendamentos"
               color={COLORS.success}
-              size={140}
-            />
-            <CircularProgress
-              value={objetivosData.agendamentosOutros}
-              max={monthlyTargets.agendamentosOutros}
-              label="Agendamentos (Outros)"
-              color={COLORS.warning}
-              size={140}
-            />
-            <CircularProgress
-              value={objetivosData.mqls}
-              max={monthlyTargets.mqls}
-              label="MQL's"
-              color={COLORS.purple}
-              size={140}
+              size={160}
             />
           </div>
 
@@ -295,15 +351,14 @@ export default function GrowthKPIs() {
               <h3 className="text-lg font-bold mb-4 text-gray-300">Performance por Comercial</h3>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-700">
-                      <th className="text-left py-3 px-4">Comercial</th>
-                      <th className="text-center py-3 px-4">Chamadas</th>
-                      <th className="text-center py-3 px-4">Agendamentos (Cold calls)</th>
-                      <th className="text-center py-3 px-4">Agendamentos (Outros)</th>
-                      <th className="text-center py-3 px-4">MQL's</th>
-                    </tr>
-                  </thead>
+                      <thead>
+                        <tr className="border-b border-gray-700">
+                          <th className="text-left py-3 px-4">Comercial</th>
+                          <th className="text-center py-3 px-4">Chamadas</th>
+                          <th className="text-center py-3 px-4">Agendamentos (Cold calls)</th>
+                          <th className="text-center py-3 px-4">Agendamentos (Outros)</th>
+                        </tr>
+                      </thead>
                   <tbody>
                     {comercialObjetivos
                       .sort((a, b) => (b.chamadas + b.agendamentosColdCalling) - (a.chamadas + a.agendamentosColdCalling))
@@ -312,7 +367,6 @@ export default function GrowthKPIs() {
                         const chamadasPercent = targets.chamadas > 0 ? (com.chamadas / targets.chamadas * 100).toFixed(0) : '-'
                         const agendCCPercent = targets.agendamentosColdCalling > 0 ? (com.agendamentosColdCalling / targets.agendamentosColdCalling * 100).toFixed(0) : '-'
                         const agendOutrosPercent = targets.agendamentosOutros > 0 ? (com.agendamentosOutros / targets.agendamentosOutros * 100).toFixed(0) : '-'
-                        const mqlsPercent = targets.mqls > 0 ? (com.mqls / targets.mqls * 100).toFixed(0) : '-'
                         
                         return (
                           <tr key={idx} className={`border-b border-gray-800 ${idx < 3 ? 'bg-cyan-500/5' : ''}`}>
@@ -333,12 +387,6 @@ export default function GrowthKPIs() {
                               <div className="font-bold text-warning">{com.agendamentosOutros}</div>
                               <div className="text-xs text-gray-400">
                                 / {targets.agendamentosOutros || 0} • {agendOutrosPercent !== '-' ? `${agendOutrosPercent}%` : '-'}
-                              </div>
-                            </td>
-                            <td className="text-center py-3 px-4">
-                              <div className="font-bold text-purple-400">{com.mqls}</div>
-                              <div className="text-xs text-gray-400">
-                                / {targets.mqls || 0} • {mqlsPercent !== '-' ? `${mqlsPercent}%` : '-'}
                               </div>
                             </td>
                           </tr>
