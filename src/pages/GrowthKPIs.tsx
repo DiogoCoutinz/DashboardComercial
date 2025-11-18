@@ -34,16 +34,25 @@ export default function GrowthKPIs() {
         .order('semana', { ascending: true })
 
       // 2. Buscar dados PPF agregados por semana (SEM duplicados)
-      // Vamos buscar e depois filtrar por DIA único
       const { data: ppfData } = await supabase
         .from('comercial_registos_ppf')
         .select('*')
         .gte('dia', '2025-10-01') // Q4 2025
-        .order('semana', { ascending: true })
+        .order('created_at', { ascending: false }) // Mais recente primeiro
 
       if (ppfData && eodWeekData) {
-        // ✅ AGRUPAR POR DIA primeiro para evitar duplicação por closer/offer
-        const ppfByDay = ppfData.reduce((acc: any, r: any) => {
+        // 🔥 DEDUPLICAR: Pegar apenas o registo mais recente por dia+closer+offer
+        const deduplicated = ppfData.reduce((acc: any, r: any) => {
+          const key = `${r.dia}_${r.closer}_${r.offer || 'null'}`
+          // Só adiciona se ainda não existe (já está ordenado por created_at DESC)
+          if (!acc[key]) {
+            acc[key] = r
+          }
+          return acc
+        }, {})
+
+        // ✅ AGRUPAR POR DIA depois da deduplicação
+        const ppfByDay: any = Object.values(deduplicated).reduce((acc: any, r: any) => {
           const key = `${r.dia}_${r.semana}`
           if (!acc[key]) {
             acc[key] = {
@@ -82,7 +91,7 @@ export default function GrowthKPIs() {
         }, {})
 
         // Agora agrupar por SEMANA
-        const byWeek: any = Object.values(ppfByDay).reduce((acc: any, r: any) => {
+        const byWeek: any = (Object.values(ppfByDay) as any[]).reduce((acc: any, r: any) => {
           const week = r.semana || 'S/N'
           if (!acc[week]) {
             acc[week] = {
@@ -112,7 +121,16 @@ export default function GrowthKPIs() {
         }, {})
 
         // ✅ Adicionar agendamentos do EOD por semana
-        eodWeekData.forEach((r: any) => {
+        // 🔥 DEDUPLICAR EOD também (dia + comercial + canal + offer)
+        const eodDeduplicated = eodWeekData.reduce((acc: any, r: any) => {
+          const key = `${r.dia}_${r.comercial}_${r.canal_aquisicao}_${r.offer || 'null'}`
+          if (!acc[key]) {
+            acc[key] = r
+          }
+          return acc
+        }, {})
+
+        Object.values(eodDeduplicated).forEach((r: any) => {
           const week = r.semana || 'S/N'
           if (!byWeek[week]) {
             byWeek[week] = {
@@ -127,9 +145,13 @@ export default function GrowthKPIs() {
               mqls: 0,
               sqls: 0,
               verbal_agreements: 0,
+              leads_agendadas_eod: 0,
+              leads_compareceram_eod: 0,
             }
           }
           byWeek[week].agendamentos += r.agendamentos || 0
+          byWeek[week].leads_agendadas_eod += r.leads_agendadas || 0
+          byWeek[week].leads_compareceram_eod += r.leads_compareceram || 0
         })
 
         setWeeklyData(Object.values(byWeek))
@@ -150,8 +172,18 @@ export default function GrowthKPIs() {
         .select('*')
         .eq('ano', currentYear)
         .eq('mes', currentMonth)
+        .order('created_at', { ascending: false })
 
       if (eodData && ppfMonthData) {
+        // 🔥 DEDUPLICAR PPF também para objetivos mensais
+        const deduplicatedMonth = ppfMonthData.reduce((acc: any, r: any) => {
+          const key = `${r.dia}_${r.closer}_${r.offer || 'null'}`
+          if (!acc[key]) {
+            acc[key] = r
+          }
+          return acc
+        }, {})
+
         // Agregar totais do mês
         const totalChamadas = eodData.reduce((sum, r) => sum + (r.chamadas_efetuadas || 0), 0)
         const totalAgendamentosColdCalling = eodData
@@ -161,8 +193,8 @@ export default function GrowthKPIs() {
           .filter(r => r.canal_aquisicao !== 'Cold Calling')
           .reduce((sum, r) => sum + (r.agendamentos || 0), 0)
         
-        // ✅ MQLs vêm do PPF (campo mqls = total)
-        const totalMQLs = ppfMonthData.reduce((sum, r) => sum + (r.mqls || 0), 0)
+        // ✅ MQLs vêm do PPF (campo mqls = total) - APÓS DEDUPLICAÇÃO
+        const totalMQLs = Object.values(deduplicatedMonth).reduce((sum: number, r: any) => sum + (r.mqls || 0), 0)
 
         setObjetivosData({
           chamadas: totalChamadas,
@@ -192,8 +224,8 @@ export default function GrowthKPIs() {
           return acc
         }, {})
 
-        // ✅ Adicionar MQLs por comercial de origem (campo mqls_comercial)
-        ppfMonthData.forEach((r: any) => {
+        // ✅ Adicionar MQLs por comercial de origem (campo mqls_comercial) - APÓS DEDUPLICAÇÃO
+        Object.values(deduplicatedMonth).forEach((r: any) => {
           const comercialOrigem = r.comercial_origem
           if (comercialOrigem && byComercial[comercialOrigem]) {
             byComercial[comercialOrigem].mqls += r.mqls_comercial || 0
@@ -491,8 +523,9 @@ export default function GrowthKPIs() {
                   Show up rate
                 </td>
                 {weeklyData.map((week) => {
-                  const rate = week.discoverys > 0 
-                    ? ((week.comparecimentos_discovery / week.discoverys) * 100).toFixed(1)
+                  // 🔥 USAR DADOS DO EOD: leads_compareceram / leads_agendadas
+                  const rate = week.leads_agendadas_eod > 0 
+                    ? ((week.leads_compareceram_eod / week.leads_agendadas_eod) * 100).toFixed(1)
                     : '0.0'
                   return (
                     <td key={week.semana} className="text-center py-3 px-3">
