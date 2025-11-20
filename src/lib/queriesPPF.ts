@@ -191,9 +191,9 @@ export async function getDataByOrigin(filters: FiltersPPF = {}) {
         verbal_agreements: 0,
       }
     }
-    acc[key].mqls += r.mqls_comercial
-    acc[key].sqls += r.sqls_comercial
-    acc[key].verbal_agreements += r.verbal_agreements_comercial
+    acc[key].mqls += r.mqls || 0
+    acc[key].sqls += r.sqls || 0
+    acc[key].verbal_agreements += r.verbal_agreements || 0
     return acc
   }, {} as Record<string, any>)
   

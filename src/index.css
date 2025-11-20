@@ -73,14 +73,69 @@
 
   select,
   input[type="text"],
-  input[type="date"] {
+  input[type="date"],
+  input[type="number"],
+  textarea {
     @apply bg-dark-card border border-gray-700 text-gray-200 px-3 py-2 rounded-lg text-sm;
   }
 
   select:focus,
   input[type="text"]:focus,
-  input[type="date"]:focus {
+  input[type="date"]:focus,
+  input[type="number"]:focus,
+  textarea:focus {
     @apply outline-none border-primary;
+  }
+
+  /* Date input styling for dark mode */
+  input[type="date"] {
+    color-scheme: dark;
+    position: relative;
+    min-height: 38px;
+  }
+
+  /* Calendar icon styling */
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    margin-left: 4px;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    filter: invert(1);
+    background-color: rgba(59, 130, 246, 0.2);
+  }
+
+  /* Date input text visibility */
+  input[type="date"]::-webkit-datetime-edit {
+    color: rgb(229, 231, 235);
+    padding: 0;
+  }
+
+  input[type="date"]::-webkit-datetime-edit-text {
+    color: rgb(156, 163, 175);
+    padding: 0 2px;
+  }
+
+  input[type="date"]::-webkit-datetime-edit-month-field,
+  input[type="date"]::-webkit-datetime-edit-day-field,
+  input[type="date"]::-webkit-datetime-edit-year-field {
+    color: rgb(229, 231, 235);
+  }
+
+  input[type="date"]::-webkit-datetime-edit-month-field:focus,
+  input[type="date"]::-webkit-datetime-edit-day-field:focus,
+  input[type="date"]::-webkit-datetime-edit-year-field:focus {
+    background-color: rgba(59, 130, 246, 0.3);
+    outline: none;
+    border-radius: 2px;
+  }
+
+  /* When date input is empty (placeholder state) */
+  input[type="date"]:invalid::-webkit-datetime-edit {
+    color: rgb(107, 114, 128);
   }
 }
 

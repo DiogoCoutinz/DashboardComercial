@@ -152,6 +152,7 @@ export async function getDataByComercial(filters: Filters = {}) {
         comercial: r.comercial,
         chamadas_efetuadas: 0,
         chamadas_atendidas: 0,
+        decisores_qualificados: 0,
         agendamentos: 0,
         leads_compareceram: 0,
         submissoes: 0,
@@ -160,6 +161,7 @@ export async function getDataByComercial(filters: Filters = {}) {
     }
     acc[r.comercial].chamadas_efetuadas += r.chamadas_efetuadas
     acc[r.comercial].chamadas_atendidas += r.chamadas_atendidas
+    acc[r.comercial].decisores_qualificados += r.decisores_qualificados
     acc[r.comercial].agendamentos += r.agendamentos
     acc[r.comercial].leads_compareceram += r.leads_compareceram
     acc[r.comercial].submissoes += r.submissoes

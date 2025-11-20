@@ -123,7 +123,8 @@ export default function Filters() {
                 type="date"
                 value={startDate}
                 onChange={(e) => updateFilter('startDate', e.target.value)}
-                className="w-full"
+                placeholder="Selecione a data"
+                className="w-full cursor-pointer"
               />
             </div>
             <div>
@@ -135,7 +136,8 @@ export default function Filters() {
                 type="date"
                 value={endDate}
                 onChange={(e) => updateFilter('endDate', e.target.value)}
-                className="w-full"
+                placeholder="Selecione a data"
+                className="w-full cursor-pointer"
               />
             </div>
           </div>

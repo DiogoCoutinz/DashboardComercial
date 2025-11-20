@@ -518,9 +518,9 @@ export default function GrowthKPIs() {
                   Show up rate
                 </td>
                 {weeklyData.map((week) => {
-                  // 🔥 USAR DADOS DO EOD: leads_compareceram / leads_agendadas
-                  const rate = week.leads_agendadas_eod > 0 
-                    ? ((week.leads_compareceram_eod / week.leads_agendadas_eod) * 100).toFixed(1)
+                  // 🔥 FIX: Usar agendamentos (não leads_agendadas)
+                  const rate = week.agendamentos > 0 
+                    ? ((week.leads_compareceram_eod / week.agendamentos) * 100).toFixed(1)
                     : '0.0'
                   return (
                     <td key={week.semana} className="text-center py-3 px-3">
