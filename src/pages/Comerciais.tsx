@@ -35,11 +35,13 @@ export default function Comerciais() {
         taxaAtendimento: c.chamadas_efetuadas > 0 
           ? ((c.chamadas_atendidas / c.chamadas_efetuadas) * 100).toFixed(1) + '%'
           : '-',
-        taxaShowUp: c.leads_agendadas > 0 
-          ? ((c.leads_compareceram / c.leads_agendadas) * 100).toFixed(1) + '%'
+        // 🔥 FIX: Usar agendamentos, não leads_agendadas
+        taxaShowUp: c.agendamentos > 0 
+          ? ((c.leads_compareceram / c.agendamentos) * 100).toFixed(1) + '%'
           : '-',
-        taxaConversao: c.submissoes > 0 
-          ? ((c.agendamentos / c.submissoes) * 100).toFixed(1) + '%'
+        // 🔥 FIX: Taxa conversão = agendamentos / decisores_qualificados (não submissoes!)
+        taxaConversao: c.decisores_qualificados > 0 
+          ? ((c.agendamentos / c.decisores_qualificados) * 100).toFixed(0) + '%'
           : '-',
       }))
       setComercialData(enriched)

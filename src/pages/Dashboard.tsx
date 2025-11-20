@@ -172,7 +172,7 @@ export default function Dashboard() {
           </div>
           <div className="text-sm text-gray-300 mb-1">Taxa Comparecência</div>
           <div className="text-5xl font-bold text-cyan-400 mb-2">{kpis.taxaShowUp.toFixed(0)}%</div>
-          <div className="text-xs text-gray-400">{kpis.leads_compareceram}/{kpis.leads_agendadas}</div>
+          <div className="text-xs text-gray-400">{kpis.leads_compareceram}/{kpis.agendamentos}</div>
         </div>
 
         {/* Leads Submetidas */}
@@ -391,14 +391,14 @@ export default function Dashboard() {
             </div>
 
             {/* Tempo Médio de Resposta */}
-            {kpis.tempo_medio_resposta && (
+            {kpis.tempoMedioResposta > 0 && (
               <div className="bg-dark-hover rounded-lg p-4">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm text-gray-400">Tempo Médio de Resposta</span>
                   <span className="text-xs bg-warning/20 text-warning px-2 py-1 rounded">Ads</span>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-warning">{kpis.tempo_medio_resposta.toFixed(0)}h</div>
+                  <div className="text-3xl font-bold text-warning">{kpis.tempoMedioResposta.toFixed(0)}h</div>
                   <div className="text-xs text-gray-500 mt-1">Tempo até contacto</div>
                 </div>
               </div>

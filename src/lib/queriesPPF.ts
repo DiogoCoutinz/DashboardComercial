@@ -57,7 +57,11 @@ export async function getRegistosPPF(filters: FiltersPPF = {}): Promise<Comercia
 export async function getGlobalKPIsPPF(filters: FiltersPPF = {}) {
   const registos = await getRegistosPPF(filters)
   
-  const totals = registos.reduce((acc, r) => ({
+  // 🔥 FIX: Só contar registos SEM comercial_origem E sem canal_origem
+  // (performance 100% direta do closer, sem lead de comercial)
+  const registosProprios = registos.filter(r => !r.comercial_origem && !r.canal_aquisicao_origem)
+  
+  const totals = registosProprios.reduce((acc, r) => ({
     // Discovery Stage
     discoverys: acc.discoverys + r.discoverys,
     discoverys_no_shows: acc.discoverys_no_shows + r.discoverys_no_shows,
@@ -141,7 +145,10 @@ export async function getGlobalKPIsPPF(filters: FiltersPPF = {}) {
 export async function getDataByCloser(filters: FiltersPPF = {}) {
   const registos = await getRegistosPPF(filters)
   
-  const byCloser = registos.reduce((acc, r) => {
+  // 🔥 FIX: Só contar registos SEM comercial_origem E sem canal_origem
+  const registosProprios = registos.filter(r => !r.comercial_origem && !r.canal_aquisicao_origem)
+  
+  const byCloser = registosProprios.reduce((acc, r) => {
     if (!acc[r.closer]) {
       acc[r.closer] = {
         closer: r.closer,

@@ -87,8 +87,9 @@ export async function getGlobalKPIs(filters: Filters = {}) {
     ? (totals.chamadas_atendidas / totals.chamadas_efetuadas) * 100 
     : 0
     
-  const taxaShowUp = totals.leads_agendadas > 0 
-    ? (totals.leads_compareceram / totals.leads_agendadas) * 100 
+  // 🔥 FIX: Taxa show-up deve usar agendamentos, não leads_agendadas
+  const taxaShowUp = totals.agendamentos > 0 
+    ? (totals.leads_compareceram / totals.agendamentos) * 100 
     : 0
     
   const taxaConversao = totals.submissoes > 0 
