@@ -176,9 +176,6 @@ export default function GrowthKPIs() {
         .order('created_at', { ascending: false })
 
       if (eodData && ppfMonthData) {
-        // 🔥 FIX: Filtrar só registos SEM comercial_origem E sem canal_origem
-        const ppfMonthDataPropria = ppfMonthData.filter((r: any) => !r.comercial_origem && !r.canal_aquisicao_origem)
-        
         // Agregar totais do mês
         const totalChamadas = eodData.reduce((sum, r) => sum + (r.chamadas_efetuadas || 0), 0)
         const totalAgendamentosColdCalling = eodData
@@ -188,9 +185,7 @@ export default function GrowthKPIs() {
           .filter(r => r.canal_aquisicao !== 'Cold Calling')
           .reduce((sum, r) => sum + (r.agendamentos || 0), 0)
         
-        // ✅ MQLs vêm do PPF
-        // Nota: Já estamos a usar ppfMonthDataPropria (sem comercial_origem)
-        // MAS para MQLs queremos os que TÊM origem (para atribuir a comerciais)
+        // ✅ MQLs vêm do PPF - contamos os que TÊM comercial_origem
         const totalMQLs = ppfMonthData
           .filter((r: any) => r.comercial_origem && r.mqls > 0)
           .reduce((sum: number, r: any) => sum + (r.mqls || 0), 0)
