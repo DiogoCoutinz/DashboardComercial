@@ -52,7 +52,6 @@ export default function GrowthKPIs() {
               dia: r.dia,
               semana: r.semana,
               discoverys: 0,
-              comparecimentos_discovery: 0,
               discoverys_no_shows: 0,
               discoverys_reagendadas: 0,
               follow_ups: 0,
@@ -68,7 +67,6 @@ export default function GrowthKPIs() {
           }
           // Somar valores por dia
           acc[key].discoverys += r.discoverys || 0
-          acc[key].comparecimentos_discovery += r.comparecimentos_discovery || 0
           acc[key].discoverys_no_shows += r.discoverys_no_shows || 0
           acc[key].discoverys_reagendadas += r.discoverys_reagendadas || 0
           acc[key].follow_ups += r.follow_ups || 0
@@ -91,11 +89,16 @@ export default function GrowthKPIs() {
               semana: week,
               agendamentos: 0,
               discoverys: 0,
-              comparecimentos_discovery: 0,
+              discoverys_no_shows: 0,
+              discoverys_reagendadas: 0,
               no_shows: 0,
               reagendadas: 0,
               follow_ups: 0,
+              follow_ups_no_shows: 0,
+              follow_ups_reagendadas: 0,
               qas: 0,
+              qas_no_shows: 0,
+              qas_reagendadas: 0,
               mqls: 0,
               sqls: 0,
               verbal_agreements: 0,
@@ -104,11 +107,16 @@ export default function GrowthKPIs() {
             }
           }
           acc[week].discoverys += r.discoverys
-          acc[week].comparecimentos_discovery += r.comparecimentos_discovery
+          acc[week].discoverys_no_shows += r.discoverys_no_shows
+          acc[week].discoverys_reagendadas += r.discoverys_reagendadas
           acc[week].no_shows += r.discoverys_no_shows + r.follow_ups_no_shows + r.qas_no_shows
           acc[week].reagendadas += r.discoverys_reagendadas + r.follow_ups_reagendadas + r.qas_reagendadas
           acc[week].follow_ups += r.follow_ups
+          acc[week].follow_ups_no_shows += r.follow_ups_no_shows
+          acc[week].follow_ups_reagendadas += r.follow_ups_reagendadas
           acc[week].qas += r.qas
+          acc[week].qas_no_shows += r.qas_no_shows
+          acc[week].qas_reagendadas += r.qas_reagendadas
           acc[week].mqls += r.mqls
           acc[week].sqls += r.sqls
           acc[week].verbal_agreements += r.verbal_agreements
@@ -124,11 +132,16 @@ export default function GrowthKPIs() {
               semana: week,
               agendamentos: 0,
               discoverys: 0,
-              comparecimentos_discovery: 0,
+              discoverys_no_shows: 0,
+              discoverys_reagendadas: 0,
               no_shows: 0,
               reagendadas: 0,
               follow_ups: 0,
+              follow_ups_no_shows: 0,
+              follow_ups_reagendadas: 0,
               qas: 0,
+              qas_no_shows: 0,
+              qas_reagendadas: 0,
               mqls: 0,
               sqls: 0,
               verbal_agreements: 0,
@@ -482,11 +495,15 @@ export default function GrowthKPIs() {
               {/* Comparecimentos */}
               <tr className="border-b border-gray-800">
                 <td className="py-3 px-4 sticky left-0 bg-dark-card">Comparecimentos</td>
-                {weeklyData.map((week) => (
-                  <td key={week.semana} className="text-center py-3 px-3">
-                    {week.comparecimentos_discovery}
-                  </td>
-                ))}
+                {weeklyData.map((week) => {
+                  // 🔥 FIX: Calcular comparecimentos = discoverys - no_shows - reagendadas
+                  const comparecimentos = week.discoverys - week.discoverys_no_shows - week.discoverys_reagendadas
+                  return (
+                    <td key={week.semana} className="text-center py-3 px-3">
+                      {comparecimentos}
+                    </td>
+                  )
+                })}
                 <td className="text-center py-3 px-3 bg-cyan-500/10"></td>
               </tr>
 
@@ -518,9 +535,13 @@ export default function GrowthKPIs() {
                   Show up rate
                 </td>
                 {weeklyData.map((week) => {
-                  // 🔥 FIX: Usar agendamentos (não leads_agendadas)
-                  const rate = week.agendamentos > 0 
-                    ? ((week.leads_compareceram_eod / week.agendamentos) * 100).toFixed(1)
+                  // 🔥 FIX: Calcular comparecimentos do Pipeline (não EOD!)
+                  // Discoverys compareceram = total - no_shows - reagendadas
+                  const discoverysCompareceram = week.discoverys - week.discoverys_no_shows - week.discoverys_reagendadas
+                  const totalAgendado = week.discoverys
+                  
+                  const rate = totalAgendado > 0 
+                    ? ((discoverysCompareceram / totalAgendado) * 100).toFixed(1)
                     : '0.0'
                   return (
                     <td key={week.semana} className="text-center py-3 px-3">

@@ -111,16 +111,17 @@ export async function getGlobalKPIsPPF(filters: FiltersPPF = {}) {
   })
   
   // Calculate rates
+  // 🔥 FIX: Compareceram = Total - No_shows - Reagendadas
   const taxaShowUpDiscovery = totals.discoverys > 0 
-    ? ((totals.discoverys - totals.discoverys_no_shows) / totals.discoverys) * 100 
+    ? ((totals.discoverys - totals.discoverys_no_shows - totals.discoverys_reagendadas) / totals.discoverys) * 100 
     : 0
     
   const taxaShowUpFollowUp = totals.follow_ups > 0 
-    ? ((totals.follow_ups - totals.follow_ups_no_shows) / totals.follow_ups) * 100 
+    ? ((totals.follow_ups - totals.follow_ups_no_shows - totals.follow_ups_reagendadas) / totals.follow_ups) * 100 
     : 0
     
   const taxaShowUpQA = totals.qas > 0 
-    ? ((totals.qas - totals.qas_no_shows) / totals.qas) * 100 
+    ? ((totals.qas - totals.qas_no_shows - totals.qas_reagendadas) / totals.qas) * 100 
     : 0
   
   const taxaConversaoMQLtoSQL = totals.mqls > 0 
