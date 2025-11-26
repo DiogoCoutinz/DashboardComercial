@@ -7,7 +7,7 @@ import { TrendingUp, Target, Calendar, Award, CheckCircle } from 'lucide-react'
 import { COLORS } from '@/lib/constants'
 
 export default function GrowthKPIs() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [weeklyData, setWeeklyData] = useState<any[]>([])
   const [objetivosData, setObjetivosData] = useState<any>(null)
