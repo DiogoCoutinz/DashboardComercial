@@ -60,6 +60,28 @@ export default function FiltersMF() {
     setSearchParams(params)
   }
 
+  // 🔥 Filtros rápidos
+  const setEsteMes = () => {
+    const now = new Date()
+    const mes = now.toLocaleString('pt-PT', { month: 'long' }).toLowerCase()
+    const ano = now.getFullYear().toString()
+    const params = new URLSearchParams()
+    params.set('mes', mes)
+    params.set('ano', ano)
+    setSearchParams(params)
+  }
+
+  const setUltimos30Dias = () => {
+    const hoje = new Date()
+    const inicio = new Date()
+    inicio.setDate(hoje.getDate() - 30)
+    
+    const params = new URLSearchParams()
+    params.set('startDate', inicio.toISOString().split('T')[0])
+    params.set('endDate', hoje.toISOString().split('T')[0])
+    setSearchParams(params)
+  }
+
   const hasActiveFilters = Array.from(searchParams.keys()).some(
     k => !['startDate', 'endDate'].includes(k)
   )
@@ -97,7 +119,24 @@ export default function FiltersMF() {
       </div>
 
       {showFilters && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-dark-hover">
+        <div className="space-y-4 pt-4 border-t border-dark-hover">
+          {/* 🔥 Filtros Rápidos */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={setEsteMes}
+              className="px-3 py-1.5 text-xs font-medium bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg transition-colors"
+            >
+              Este Mês
+            </button>
+            <button
+              onClick={setUltimos30Dias}
+              className="px-3 py-1.5 text-xs font-medium bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/30 rounded-lg transition-colors"
+            >
+              Últimos 30 Dias
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Executives */}
           {options.executives.length > 0 && (
             <div>
@@ -268,6 +307,7 @@ export default function FiltersMF() {
               </select>
             </div>
           )}
+          </div>
         </div>
       )}
     </div>

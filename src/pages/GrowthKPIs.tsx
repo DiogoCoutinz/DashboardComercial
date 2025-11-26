@@ -7,15 +7,17 @@ import { TrendingUp, Target, Calendar, Award, CheckCircle } from 'lucide-react'
 import { COLORS } from '@/lib/constants'
 
 export default function GrowthKPIs() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [weeklyData, setWeeklyData] = useState<any[]>([])
   const [objetivosData, setObjetivosData] = useState<any>(null)
   const [comercialObjetivos, setComercialObjetivos] = useState<any[]>([])
+  const [selectedMonth, setSelectedMonth] = useState<string>('')
+  const [selectedYear, setSelectedYear] = useState<number>(2025)
 
   useEffect(() => {
     loadGrowthData()
-  }, [searchParams])
+  }, [searchParams, selectedMonth, selectedYear])
 
   const loadGrowthData = async () => {
     setLoading(true)
@@ -158,21 +160,42 @@ export default function GrowthKPIs() {
         setWeeklyData(Object.values(byWeek))
       }
 
-      // 2. Buscar dados EOD para objetivos (mês atual)
-      const currentMonth = new Date().toLocaleString('pt-PT', { month: 'long' }).toLowerCase()
-      const currentYear = new Date().getFullYear()
+      // 2. Buscar dados EOD para objetivos (mês selecionado ou mais recente)
+      let targetMonth = selectedMonth
+      let targetYear = selectedYear
+      
+      // 🔥 Se não há mês selecionado, detectar o mais recente com dados
+      if (!targetMonth) {
+        const { data: latestData } = await supabase
+          .from('comercial_registos_eod')
+          .select('ano, mes')
+          .order('ano', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(1)
+        
+        if (latestData && latestData.length > 0) {
+          targetMonth = latestData[0].mes
+          targetYear = latestData[0].ano
+          setSelectedMonth(targetMonth)
+          setSelectedYear(targetYear)
+        } else {
+          // Fallback: mês atual
+          targetMonth = new Date().toLocaleString('pt-PT', { month: 'long' }).toLowerCase()
+          targetYear = new Date().getFullYear()
+        }
+      }
 
       const { data: eodData } = await supabase
         .from('comercial_registos_eod')
         .select('*')
-        .eq('ano', currentYear)
-        .eq('mes', currentMonth)
+        .eq('ano', targetYear)
+        .eq('mes', targetMonth)
 
       const { data: ppfMonthData } = await supabase
         .from('comercial_registos_ppf')
         .select('*')
-        .eq('ano', currentYear)
-        .eq('mes', currentMonth)
+        .eq('ano', targetYear)
+        .eq('mes', targetMonth)
         .order('created_at', { ascending: false })
 
       if (eodData && ppfMonthData) {
@@ -199,7 +222,8 @@ export default function GrowthKPIs() {
 
         // Agregar por comercial
         const byComercial = eodData.reduce((acc: any, r: any) => {
-          const comercial = r.comercial
+          // 🔥 FIX: Normalizar nome (trim + title case) para evitar duplicados
+          const comercial = r.comercial?.trim() || 'Desconhecido'
           if (!acc[comercial]) {
             acc[comercial] = {
               comercial,
@@ -222,7 +246,7 @@ export default function GrowthKPIs() {
         // 🔥 FIX: Como mqls_comercial está vazio, usar a lógica do Notion:
         // Contar mqls onde comercial_origem está preenchido
         ppfMonthData.forEach((r: any) => {
-          const comercialOrigem = r.comercial_origem
+          const comercialOrigem = r.comercial_origem?.trim()
           if (comercialOrigem && byComercial[comercialOrigem] && r.mqls > 0) {
             byComercial[comercialOrigem].mqls += r.mqls
           }
@@ -290,15 +314,42 @@ export default function GrowthKPIs() {
     'António Xia': { chamadas: 0, agendamentosColdCalling: 0, agendamentosOutros: 0, mqls: 0 },
   }
 
+  const meses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 
+                 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']
+
   return (
     <div className="space-y-8">
       {/* Header com Objetivos Gerais */}
       <div className="card bg-gradient-to-br from-primary/20 to-primary/5 border-2 border-primary/40">
-        <div className="flex items-center gap-3 mb-4">
-          <TrendingUp className="w-6 h-6 text-primary" />
-          <div>
-            <h2 className="text-2xl font-bold">Growth KPIs</h2>
-            <p className="text-sm text-gray-400">Objetivos vs Realizados • Q4 2025</p>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <TrendingUp className="w-6 h-6 text-primary" />
+            <div>
+              <h2 className="text-2xl font-bold">Growth KPIs</h2>
+              <p className="text-sm text-gray-400">Objetivos vs Realizados • Q4 2025</p>
+            </div>
+          </div>
+          
+          {/* 🔥 Selector de Mês/Ano */}
+          <div className="flex items-center gap-3">
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-dark-hover border border-gray-700 text-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:border-primary transition-colors"
+            >
+              {meses.map(mes => (
+                <option key={mes} value={mes}>{mes.charAt(0).toUpperCase() + mes.slice(1)}</option>
+              ))}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className="bg-dark-hover border border-gray-700 text-gray-200 px-4 py-2 rounded-lg text-sm font-medium hover:border-primary transition-colors"
+            >
+              <option value={2024}>2024</option>
+              <option value={2025}>2025</option>
+              <option value={2026}>2026</option>
+            </select>
           </div>
         </div>
 
@@ -350,7 +401,9 @@ export default function GrowthKPIs() {
           <div className="flex items-center gap-3 mb-6">
             <CheckCircle className="w-6 h-6 text-success" />
             <div>
-              <h2 className="text-2xl font-bold">Objetivos • {new Date().toLocaleString('pt-PT', { month: 'long', year: 'numeric' })}</h2>
+              <h2 className="text-2xl font-bold">
+                Objetivos • {selectedMonth.charAt(0).toUpperCase() + selectedMonth.slice(1)} de {selectedYear}
+              </h2>
               <p className="text-sm text-gray-400">Progresso mensal da equipa</p>
             </div>
           </div>
@@ -507,7 +560,7 @@ export default function GrowthKPIs() {
                 <td className="py-3 px-4 sticky left-0 bg-dark-card">No-shows</td>
                 {weeklyData.map((week) => (
                   <td key={week.semana} className="text-center py-3 px-3 text-danger">
-                    {week.no_shows}
+                    {week.discoverys_no_shows}
                   </td>
                 ))}
                 <td className="text-center py-3 px-3 bg-cyan-500/10"></td>
@@ -518,7 +571,7 @@ export default function GrowthKPIs() {
                 <td className="py-3 px-4 sticky left-0 bg-dark-card">Reagendadas</td>
                 {weeklyData.map((week) => (
                   <td key={week.semana} className="text-center py-3 px-3 text-warning">
-                    {week.reagendadas}
+                    {week.discoverys_reagendadas}
                   </td>
                 ))}
                 <td className="text-center py-3 px-3 bg-cyan-500/10"></td>
