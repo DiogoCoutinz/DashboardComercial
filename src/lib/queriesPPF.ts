@@ -57,11 +57,11 @@ export async function getRegistosPPF(filters: FiltersPPF = {}): Promise<Comercia
 export async function getGlobalKPIsPPF(filters: FiltersPPF = {}) {
   const registos = await getRegistosPPF(filters)
   
-  // 🔥 FIX: Só contar registos SEM comercial_origem E sem canal_origem
-  // (performance 100% direta do closer, sem lead de comercial)
-  const registosProprios = registos.filter(r => !r.comercial_origem && !r.canal_aquisicao_origem)
+  // ✅ CORRIGIDO: Contar TODOS os registos para performance total da equipa
+  // (incluindo leads originados por comerciais - é trabalho de equipa!)
+  const registosCompletos = registos
   
-  const totals = registosProprios.reduce((acc, r) => ({
+  const totals = registosCompletos.reduce((acc, r) => ({
     // Discovery Stage
     discoverys: acc.discoverys + r.discoverys,
     discoverys_no_shows: acc.discoverys_no_shows + r.discoverys_no_shows,
@@ -146,10 +146,10 @@ export async function getGlobalKPIsPPF(filters: FiltersPPF = {}) {
 export async function getDataByCloser(filters: FiltersPPF = {}) {
   const registos = await getRegistosPPF(filters)
   
-  // 🔥 FIX: Só contar registos SEM comercial_origem E sem canal_origem
-  const registosProprios = registos.filter(r => !r.comercial_origem && !r.canal_aquisicao_origem)
+  // ✅ CORRIGIDO: Contar TODOS os registos por closer (performance completa de cada um)
+  const registosCompletos = registos
   
-  const byCloser = registosProprios.reduce((acc, r) => {
+  const byCloser = registosCompletos.reduce((acc, r) => {
     if (!acc[r.closer]) {
       acc[r.closer] = {
         closer: r.closer,

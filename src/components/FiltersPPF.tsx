@@ -67,7 +67,7 @@ export default function FiltersPPF() {
     setSearchParams(new URLSearchParams())
   }
 
-  // 🔥 Filtros rápidos
+  // 🔥 Filtros rápidos - REGRAS COMERCIAIS
   const setEsteMes = () => {
     const now = new Date()
     const mes = now.toLocaleString('pt-PT', { month: 'long' }).toLowerCase()
@@ -78,14 +78,66 @@ export default function FiltersPPF() {
     setSearchParams(params)
   }
 
-  const setUltimos30Dias = () => {
-    const hoje = new Date()
-    const inicio = new Date()
-    inicio.setDate(hoje.getDate() - 30)
+  const setMesAnterior = () => {
+    const now = new Date()
+    const mesAnterior = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const ultimoDiaMesAnterior = new Date(now.getFullYear(), now.getMonth(), 0)
     
     const params = new URLSearchParams()
-    params.set('startDate', inicio.toISOString().split('T')[0])
-    params.set('endDate', hoje.toISOString().split('T')[0])
+    params.set('startDate', mesAnterior.toISOString().split('T')[0])
+    params.set('endDate', ultimoDiaMesAnterior.toISOString().split('T')[0])
+    setSearchParams(params)
+  }
+
+  const setSemanaAtual = () => {
+    const hoje = new Date()
+    const diaSemana = hoje.getDay() // 0=domingo, 1=segunda, ..., 6=sábado
+    
+    // Calcular segunda-feira desta semana
+    const diasAteSegunda = (diaSemana === 0) ? -6 : 1 - diaSemana
+    const segundaFeira = new Date(hoje)
+    segundaFeira.setDate(hoje.getDate() + diasAteSegunda)
+    segundaFeira.setHours(0, 0, 0, 0)
+    
+    // Calcular sexta-feira desta semana
+    const sextaFeira = new Date(segundaFeira)
+    sextaFeira.setDate(segundaFeira.getDate() + 4)
+    sextaFeira.setHours(23, 59, 59, 999)
+    
+    // Se hoje é sábado ou domingo, usar sexta-feira como fim
+    // Se é dia útil, usar agora como fim
+    const fimPeriodo = (diaSemana === 0 || diaSemana === 6) 
+      ? sextaFeira 
+      : new Date() // agora
+    
+    const params = new URLSearchParams()
+    params.set('startDate', segundaFeira.toISOString().split('T')[0])
+    params.set('endDate', fimPeriodo.toISOString().split('T')[0])
+    setSearchParams(params)
+  }
+
+  const setSemanaAnterior = () => {
+    const hoje = new Date()
+    const diaSemana = hoje.getDay()
+    
+    // Calcular segunda-feira desta semana
+    const diasAteSegunda = (diaSemana === 0) ? -6 : 1 - diaSemana
+    const segundaFeiraEsta = new Date(hoje)
+    segundaFeiraEsta.setDate(hoje.getDate() + diasAteSegunda)
+    
+    // Segunda-feira da semana anterior
+    const segundaFeiraAnterior = new Date(segundaFeiraEsta)
+    segundaFeiraAnterior.setDate(segundaFeiraEsta.getDate() - 7)
+    segundaFeiraAnterior.setHours(0, 0, 0, 0)
+    
+    // Sexta-feira da semana anterior
+    const sextaFeiraAnterior = new Date(segundaFeiraAnterior)
+    sextaFeiraAnterior.setDate(segundaFeiraAnterior.getDate() + 4)
+    sextaFeiraAnterior.setHours(23, 59, 59, 999)
+    
+    const params = new URLSearchParams()
+    params.set('startDate', segundaFeiraAnterior.toISOString().split('T')[0])
+    params.set('endDate', sextaFeiraAnterior.toISOString().split('T')[0])
     setSearchParams(params)
   }
 
@@ -139,19 +191,31 @@ export default function FiltersPPF() {
 
       {showFilters && (
         <div className="space-y-4 pt-3 border-t border-gray-800">
-          {/* 🔥 Filtros Rápidos */}
+          {/* 🔥 Filtros Rápidos - SEMANA COMERCIAL */}
           <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={setSemanaAtual}
+              className="px-3 py-1.5 text-xs font-medium bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded-lg transition-colors"
+            >
+              Semana Atual
+            </button>
+            <button
+              onClick={setSemanaAnterior}
+              className="px-3 py-1.5 text-xs font-medium bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 rounded-lg transition-colors"
+            >
+              Semana Anterior
+            </button>
             <button
               onClick={setEsteMes}
               className="px-3 py-1.5 text-xs font-medium bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg transition-colors"
             >
-              Este Mês
+              Mês Atual
             </button>
             <button
-              onClick={setUltimos30Dias}
+              onClick={setMesAnterior}
               className="px-3 py-1.5 text-xs font-medium bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/30 rounded-lg transition-colors"
             >
-              Últimos 30 Dias
+              Mês Anterior
             </button>
           </div>
 
